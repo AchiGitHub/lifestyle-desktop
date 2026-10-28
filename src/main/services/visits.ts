@@ -1,0 +1,97 @@
+import { randomUUID } from 'node:crypto'
+import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import type { CheckInCandidate, CheckInResult, Visit } from '../../shared/api'
+import { nowLocalIso, todayIso } from '../../shared/dates'
+import type { VisitSource, VisitStatus } from '../../shared/enums'
+import { dateRangeInput, type DateRangeInput } from '../../shared/schemas'
+import type { Db } from '../db/client'
+import { members, visits } from '../db/schema'
+import { AppError } from './errors'
+import { lastEndDate } from './joining'
+import { findByMobile } from './members'
+import { registrationsForMember } from './registrations'
+
+/** A second check-in within this time isn't recorded again. */
+const REPEAT_HOURS = 2
+
+const shortName = (m: { firstName: string; lastName: string }): string => {
+  const last = m.lastName.trim()
+  return `${m.firstName.trim()}${last ? ` ${last[0].toUpperCase()}.` : ''}`
+}
+
+/**
+ * People on this mobile number, for the door tablet: first name and initial
+ * only. Duplicate records of one person collapse into the one with the latest
+ * membership, so the visit lands where staff will look for it.
+ */
+export function findForCheckIn(db: Db, mobile: string): CheckInCandidate[] {
+  const matches = findByMobile(db, mobile)
+    .map((m) => ({ m, end: lastEndDate(db, m.id) ?? '' }))
+    .sort((a, b) => b.end.localeCompare(a.end))
+  const byName = new Map<string, CheckInCandidate>()
+  for (const { m } of matches) {
+    const key = `${m.firstName} ${m.lastName}`.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!byName.has(key)) byName.set(key, { id: m.id, name: shortName(m) })
+  }
+  return [...byName.values()]
+}
+
+/** Where the member stands today. A balance only counts on a current registration. */
+export function memberStatus(db: Db, memberId: string, today: string): { status: VisitStatus; endDate: string | null } {
+  const regs = registrationsForMember(db, memberId)
+  if (regs.length === 0) return { status: 'NO_PLAN', endDate: null }
+  const endDate = regs.reduce((max, r) => (r.endDate > max ? r.endDate : max), regs[0].endDate)
+  if (endDate < today) return { status: 'EXPIRED', endDate }
+  const owes = regs.some((r) => r.endDate >= today && r.balance > 0)
+  return { status: owes ? 'OWES' : 'OK', endDate }
+}
+
+export function checkIn(db: Db, memberId: string, source: VisitSource, now = new Date()): CheckInResult {
+  const member = db.select().from(members).where(eq(members.id, memberId)).get()
+  if (!member) throw new AppError('That member no longer exists.')
+  const { status, endDate } = memberStatus(db, memberId, todayIso(now))
+  const since = nowLocalIso(new Date(now.getTime() - REPEAT_HOURS * 60 * 60 * 1000))
+  const recent = db
+    .select({ id: visits.id })
+    .from(visits)
+    .where(and(eq(visits.memberId, memberId), gte(visits.checkedInAt, since)))
+    .get()
+  let visitId: string | null = null
+  if (!recent) {
+    visitId = randomUUID()
+    db.insert(visits).values({ id: visitId, memberId, checkedInAt: nowLocalIso(now), source, status }).run()
+  }
+  return {
+    visitId,
+    repeat: Boolean(recent),
+    memberId,
+    firstName: member.firstName.trim(),
+    fullName: `${member.firstName} ${member.lastName}`.trim(),
+    status,
+    endDate,
+    source
+  }
+}
+
+/** Newest first. */
+export function listVisits(db: Db, raw: DateRangeInput): Visit[] {
+  const range = dateRangeInput.parse(raw)
+  return db
+    .select({
+      id: visits.id,
+      memberId: visits.memberId,
+      memberName: sql<string>`trim(${members.firstName} || ' ' || ${members.lastName})`,
+      checkedInAt: visits.checkedInAt,
+      source: visits.source,
+      status: visits.status
+    })
+    .from(visits)
+    .innerJoin(members, eq(members.id, visits.memberId))
+    .where(sql`substr(${visits.checkedInAt}, 1, 10) between ${range.from} and ${range.to}`)
+    .orderBy(desc(visits.checkedInAt))
+    .all()
+}
+
+export function deleteVisit(db: Db, id: string): void {
+  db.delete(visits).where(eq(visits.id, id)).run()
+}

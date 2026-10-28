@@ -1,0 +1,53 @@
+appId: lk.lifestylefitness.desk
+productName: Lifestyle
+copyright: Lifestyle Fitness Studio
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - out/**
+  - package.json
+  # better-sqlite3 ships a ready-made Windows binary; leave out its C sources
+  # and the other platforms' binaries.
+  - '!node_modules/better-sqlite3/{deps,src,docs,benchmark}/**'
+  - '!node_modules/better-sqlite3/binding.gyp'
+  - '!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node'
+  - '!node_modules/better-sqlite3/prebuilds/win32-arm64.node'
+
+# Schema migrations run on every start, from resources/drizzle.
+extraResources:
+  - from: drizzle
+    to: drizzle
+
+# Native modules can't load from inside the asar archive.
+asarUnpack:
+  - '**/*.node'
+
+# The prebuilt better-sqlite3 binary is N-API, so it already works in
+# Electron. Rebuilding would need a C++ compiler for nothing.
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: build/icon.png
+
+# Updates: installed apps download new versions from this repository's GitHub
+# Releases. `npm run release` uploads a draft release; publish it on GitHub to
+# send it out. The repository is public, so the app needs no token to read it.
+publish:
+  provider: github
+  owner: AchiGitHub
+  repo: lifestyle-desktop
+  releaseType: draft
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Lifestyle
+  artifactName: Lifestyle-Setup-${version}.${ext}

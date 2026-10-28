@@ -1,0 +1,21 @@
+/* A touch screen at the door: no text selection, no double-tap zoom, no pull-to-refresh. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--mantine-color-brand-9);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+.door-key {
+  height: 84px;
+  font-size: 32px;
+  font-weight: 600;
+}

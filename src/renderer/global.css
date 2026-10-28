@@ -1,0 +1,61 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--mantine-color-gray-0);
+}
+
+/* Clickable names inside tables. */
+.link-button {
+  all: unset;
+  cursor: pointer;
+  color: var(--mantine-color-brand-7);
+  font-weight: 500;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.link-button:focus-visible {
+  outline: 2px solid var(--mantine-color-brand-4);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.nav-link[data-active] {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.nav-link {
+  position: relative;
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: var(--mantine-radius-md);
+}
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+/* Short screens (1366×768 at 125% scaling): the menu matters more than the logo. */
+@media (max-height: 640px) {
+  .nav-logo,
+  .nav-footer {
+    display: none;
+  }
+  .nav-link {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+}
+
+.nav-link[data-active]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--mantine-color-flame-5);
+}
