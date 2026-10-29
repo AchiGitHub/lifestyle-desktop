@@ -42,6 +42,7 @@ import {
   type ReceiptSettingsInput,
   type ReminderSettingsInput
 } from '@shared/schemas'
+import { AppearanceCard } from '../components/AppearanceCard'
 import { LanDevicesCard } from '../components/LanDevicesCard'
 import { OwnerSummaryCard } from '../components/OwnerSummaryCard'
 import { PageHeader } from '../components/PageHeader'
@@ -480,6 +481,7 @@ export function Settings() {
           named
           description="Instructors record store sales and stock on their own phones, over the gym’s Wi-Fi. Each phone is paired under the instructor’s name, so every sale and stock change shows who made it. This computer must be on with the app open."
         />
+        <AppearanceCard />
         <UpdatesCard />
         <PasswordCard />
       </Stack>

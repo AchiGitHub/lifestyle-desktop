@@ -99,7 +99,7 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
           {...form.getInputProps('paymentType')}
         />
         {product && (
-          <Paper p="sm" bg="gray.0">
+          <Paper p="sm" bg="var(--app-muted-bg)">
             <Group justify="space-between">
               <Text size="sm" c="dimmed">
                 {qty} × {lkr(product.sellingPrice)}

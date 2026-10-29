@@ -1,6 +1,7 @@
 import { Alert, Center, Loader } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useWindowAppearance } from './components/AppearanceCard'
 import { AppLayout } from './components/AppLayout'
 import { MemberDrawerProvider } from './components/MemberDrawer'
 import { ReceiptProvider } from './components/ReceiptDialog'
@@ -23,6 +24,7 @@ import { Settings } from './pages/Settings'
 import { Store } from './pages/Store'
 
 export function App() {
+  useWindowAppearance()
   const auth = useQuery({ queryKey: ['auth'], queryFn: () => api.auth.status() })
 
   if (auth.isPending) {

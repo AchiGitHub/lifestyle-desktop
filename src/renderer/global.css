@@ -4,15 +4,44 @@ body,
   height: 100%;
 }
 
+/* Colours the theme doesn't switch by itself between light and dark (Settings → Appearance). */
+:root {
+  --app-page-bg: var(--mantine-color-gray-0);
+  --app-muted-bg: var(--mantine-color-gray-0);
+  --app-link: var(--mantine-color-brand-7);
+  --app-track: var(--mantine-color-brand-1);
+  --app-chart-grid: var(--mantine-color-gray-2);
+  --app-chart-axis: var(--mantine-color-gray-4);
+  --app-chart-cursor: var(--mantine-color-gray-1);
+  /* Warning and money text: the same shades as before in light, brighter ones on dark. */
+  --app-red-text: var(--mantine-color-red-7);
+  --app-orange-text: var(--mantine-color-orange-8);
+  --app-up: var(--mantine-color-teal-8);
+  --app-down: var(--mantine-color-red-8);
+}
+[data-mantine-color-scheme='dark'] {
+  --app-red-text: var(--mantine-color-red-4);
+  --app-orange-text: var(--mantine-color-orange-4);
+  --app-up: var(--mantine-color-teal-4);
+  --app-down: var(--mantine-color-red-4);
+  --app-page-bg: var(--mantine-color-dark-8);
+  --app-muted-bg: var(--mantine-color-dark-6);
+  --app-link: var(--mantine-color-brand-3);
+  --app-track: var(--mantine-color-dark-4);
+  --app-chart-grid: var(--mantine-color-dark-4);
+  --app-chart-axis: var(--mantine-color-dark-3);
+  --app-chart-cursor: var(--mantine-color-dark-5);
+}
+
 body {
-  background: var(--mantine-color-gray-0);
+  background: var(--app-page-bg);
 }
 
 /* Clickable names inside tables. */
 .link-button {
   all: unset;
   cursor: pointer;
-  color: var(--mantine-color-brand-7);
+  color: var(--app-link);
   font-weight: 500;
 }
 .link-button:hover {

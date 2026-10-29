@@ -29,6 +29,7 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   receipts: ['get', 'print', 'sendWhatsApp', 'printSample', 'settings', 'saveSettings'],
   summary: ['days', 'sendToOwner', 'status', 'setEnabled', 'setOwnerEmail', 'updateNow'],
   updates: ['status', 'check', 'install'],
+  appearance: ['set'],
   visits: ['list', 'options', 'checkIn', 'delete'],
   doorTablet: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice'],
   staffDevices: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice']

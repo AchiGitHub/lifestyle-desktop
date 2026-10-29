@@ -102,7 +102,7 @@ function WhoOwes() {
             sortable: true,
             textAlign: 'right',
             render: (c) => (
-              <Text fw={700} c="red.7" style={nowrap}>
+              <Text fw={700} c="var(--app-red-text)" style={nowrap}>
                 {lkr(c.owed)}
               </Text>
             )
@@ -145,7 +145,7 @@ function CreditSales() {
         <Text fw={600}>
           {data.length} on credit · {lkr(total)}
           {owed > 0 && (
-            <Text span c="red.7">
+            <Text span c="var(--app-red-text)">
               {' '}
               · {lkr(owed)} still to pay
             </Text>

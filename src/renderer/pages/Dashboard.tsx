@@ -47,7 +47,7 @@ function Money({ value }: { value: number }) {
 /** "+12% vs 1–28 Sep": an arrow and green when up, red when down. */
 function Change({ by, unit = '', text }: { by: number; unit?: string; text: string }) {
   const Icon = by > 0 ? IconArrowUpRight : IconArrowDownRight
-  const color = by > 0 ? 'teal.8' : by < 0 ? 'red.8' : 'dimmed'
+  const color = by > 0 ? 'var(--app-up)' : by < 0 ? 'var(--app-down)' : 'dimmed'
   return (
     <Group gap={4} wrap="nowrap">
       <Group gap={2} wrap="nowrap" c={color}>
@@ -106,7 +106,7 @@ function Stat({
 
 /** Share of memberships renewed: brand blue on a lighter blue track. */
 function Meter({ value, label }: { value: number; label: string }) {
-  return <Progress value={value} color="brand.6" bg="brand.1" size="sm" mt={8} aria-label={label} />
+  return <Progress value={value} color="brand.6" bg="var(--app-track)" size="sm" mt={8} aria-label={label} />
 }
 
 function Tiles({ report, checkedInToday }: { report: DashboardReport; checkedInToday: number }) {
@@ -435,7 +435,7 @@ function ExpiringSoon() {
                 </Table.Td>
                 <Table.Td>
                   <Text size="sm">{formatDate(r.endDate)}</Text>
-                  <Text size="xs" c="orange.8">
+                  <Text size="xs" c="var(--app-orange-text)">
                     {relativeDays(r.endDate)}
                   </Text>
                 </Table.Td>

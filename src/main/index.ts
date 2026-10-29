@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron'
+import { app, BrowserWindow, Menu, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { backupDue, backupNow } from './backup'
 import { dailySnapshot, snapshot } from './backup/local'
@@ -86,6 +86,8 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     if (app.isPackaged) Menu.setApplicationMenu(null)
+    // Light until the window applies the saved choice (Settings → Appearance); Windows' own setting isn't followed.
+    nativeTheme.themeSource = 'light'
     openDb()
     registerIpc()
     createWindow()

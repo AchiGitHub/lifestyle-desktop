@@ -30,7 +30,8 @@ const flame: MantineColorsTuple = [
 
 export const theme = createTheme({
   primaryColor: 'brand',
-  primaryShade: 8,
+  // Navy on light; a lighter blue on dark, where navy buttons and links would be hard to see.
+  primaryShade: { light: 8, dark: 5 },
   colors: { brand, flame },
   defaultRadius: 'md',
   fontFamily: '"Segoe UI", system-ui, -apple-system, Roboto, sans-serif',

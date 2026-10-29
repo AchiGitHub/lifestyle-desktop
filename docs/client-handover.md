@@ -74,6 +74,7 @@ Double-click **Lifestyle** on the desktop and type the password. Always use the 
 | See who came in today | **Check-ins**. Members check in on the door tablet; check someone in at the desk with **Check in a member** |
 | Pair a new door tablet | **Settings** → **Door check-in tablet** → **Pair a tablet**, then scan the code with the tablet |
 | See how the month is going | **Dashboard**: income, active members, registrations and renewals compared with last month, and charts of the last 12 months (**Table** shows the numbers). The arrows at the top right go to other months. For any other dates, use **Payments** |
+| Switch to dark mode (easier in the evening) | **Settings** → **Appearance** → **Dark** (or **Light**). It's remembered on this computer |
 | Merge people who were entered twice | **Members** → **Possible duplicates** |
 
 WhatsApp messages are typed in for you but **not sent**: read the message, then press send in WhatsApp.

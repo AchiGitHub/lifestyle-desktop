@@ -185,7 +185,7 @@ export function LanDevicesCard({
             {data.addresses.length > 0 ? (
               data.addresses.map((a) => <Code key={a}>{a}</Code>)
             ) : (
-              <Text size="sm" c="orange.8">
+              <Text size="sm" c="var(--app-orange-text)">
                 This computer isn’t connected to a network.
               </Text>
             )}

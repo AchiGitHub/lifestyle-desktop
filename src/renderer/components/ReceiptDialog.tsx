@@ -58,7 +58,7 @@ function SendOnWhatsApp({ receipt }: { receipt: Receipt }) {
   return (
     <Stack gap={4}>
       {member && (
-        <Text size="xs" c="orange.8" maw={340}>
+        <Text size="xs" c="var(--app-orange-text)" maw={340}>
           {stored
             ? `${member.firstName}'s saved number isn't a valid mobile number (a foreign one needs + and the country code). Correct it here to send, and fix it in their details.`
             : `${member.firstName} has no mobile number saved. Type one to send.`}

@@ -259,7 +259,7 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
           <Divider label="Store items on credit" labelPosition="left" />
           <Paper p="sm">
             <Group justify="space-between" mb="xs">
-              <Text fw={600} c="red.7">
+              <Text fw={600} c="var(--app-red-text)">
                 Owes {lkr(credit.owed)}
               </Text>
               <Group gap="xs">

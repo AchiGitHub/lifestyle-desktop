@@ -95,7 +95,8 @@ export function PaymentsTable({
           title: 'Category',
           sortable: true,
           render: (p) => (
-            <Badge variant="light" color={CATEGORY_BADGE[p.category]}>
+            // Never cut short ("PERSONAL TR…"): the column grows to fit instead.
+            <Badge variant="light" color={CATEGORY_BADGE[p.category]} style={{ minWidth: 'max-content' }}>
               {PAYMENT_CATEGORY_LABELS[p.category]}
             </Badge>
           )

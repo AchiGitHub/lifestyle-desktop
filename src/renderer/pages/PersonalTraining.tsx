@@ -150,7 +150,7 @@ function Clients() {
                   {lkr(p.paid)} of {lkr(p.amount)}
                 </Text>
                 {p.balance > 0 && (
-                  <Text size="xs" c="red.7" fw={600} style={nowrap}>
+                  <Text size="xs" c="var(--app-red-text)" fw={600} style={nowrap}>
                     owes {lkr(p.balance)}
                   </Text>
                 )}
@@ -279,7 +279,7 @@ function Commission() {
                     </Table.Td>
                     <Table.Td>{p.packageName}</Table.Td>
                     <Table.Td ta="right">{lkr(p.amount)}</Table.Td>
-                    <Table.Td ta="right" c={p.balance > 0 ? 'red.7' : undefined}>
+                    <Table.Td ta="right" c={p.balance > 0 ? 'var(--app-red-text)' : undefined}>
                       {p.balance > 0 ? `${lkr(p.paid)} (owes ${lkr(p.balance)})` : lkr(p.paid)}
                     </Table.Td>
                     {!t.isOwner && (

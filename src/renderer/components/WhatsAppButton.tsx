@@ -154,7 +154,7 @@ function ReminderDialog({
             <Text size="sm" fw={600} mb="xs">
               Message to {fullName(member)}
             </Text>
-            <Paper withBorder p="sm" bg="gray.0">
+            <Paper withBorder p="sm" bg="var(--app-muted-bg)">
               <Text size="sm" style={{ whiteSpace: 'pre-line' }}>
                 {text}
               </Text>
@@ -165,7 +165,7 @@ function ReminderDialog({
           </div>
         </SimpleGrid>
         <Group justify="space-between" wrap="nowrap">
-          <Text size="xs" c={missingPackages ? 'orange.8' : 'dimmed'}>
+          <Text size="xs" c={missingPackages ? 'var(--app-orange-text)' : 'dimmed'}>
             {missingPackages
               ? 'Tick at least one package.'
               : usesPackages

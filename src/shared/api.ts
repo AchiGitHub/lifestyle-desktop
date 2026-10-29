@@ -441,6 +441,9 @@ export interface DashboardReport {
   byPlan: Array<{ membershipTypeId: string; name: string; count: number; amount: number }>
 }
 
+/** Settings → Appearance. */
+export type ColorScheme = 'light' | 'dark'
+
 export interface AuthStatus {
   hasPassword: boolean
   authenticated: boolean
@@ -726,6 +729,10 @@ export interface Api {
     /** As for the door tablet; the phone is listed under the instructor's name. */
     startPairing(name: string): Promise<LanPairing>
     removeDevice(id: string): Promise<void>
+  }
+  /** Light or dark: the window's title bar and scrollbars follow the app's choice. */
+  appearance: {
+    set(scheme: ColorScheme): Promise<void>
   }
   updates: {
     status(): Promise<UpdateStatus>

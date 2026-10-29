@@ -68,7 +68,7 @@ function Choice({
       disabled={disabled}
       p="md"
       style={{
-        border: '1px solid var(--mantine-color-gray-3)',
+        border: '1px solid var(--mantine-color-default-border)',
         borderRadius: 'var(--mantine-radius-md)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer'

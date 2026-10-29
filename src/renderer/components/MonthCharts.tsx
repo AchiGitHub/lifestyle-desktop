@@ -22,8 +22,9 @@ import type { MonthFigures } from '@shared/api'
 export const SERIES_COLORS = ['var(--mantine-color-brand-6)', 'var(--mantine-color-flame-7)'] as const
 
 const MUTED = 'var(--mantine-color-dimmed)'
-const GRID = 'var(--mantine-color-gray-2)'
-const AXIS = 'var(--mantine-color-gray-4)'
+// From global.css, so the lines don't glare in dark mode.
+const GRID = 'var(--app-chart-grid)'
+const AXIS = 'var(--app-chart-axis)'
 const SURFACE = 'var(--mantine-color-body)'
 /** The month in progress is drawn lighter and labelled "so far". */
 const PARTIAL_OPACITY = 0.4
@@ -188,7 +189,7 @@ export function MonthColumns<T extends MonthFigures>({
     <ResponsiveContainer width="100%" height={HEIGHT}>
       <BarChart data={months} margin={{ top: 22, right: 4, bottom: 0, left: 0 }} barCategoryGap="28%">
         {axes(months, axisFormat, ticks ?? niceTicks(highest))}
-        <Tooltip cursor={{ fill: 'var(--mantine-color-gray-1)' }} content={tooltip(details)} isAnimationActive={false} />
+        <Tooltip cursor={{ fill: 'var(--app-chart-cursor)' }} content={tooltip(details)} isAnimationActive={false} />
         {series.map((s, i) => (
           <Bar
             key={s.key}

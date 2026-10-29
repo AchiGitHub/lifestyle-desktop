@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, nativeTheme } from 'electron'
 import { count } from 'drizzle-orm'
 import { ZodError } from 'zod'
 import type { Api, IpcResult } from '../shared/api'
@@ -99,6 +99,11 @@ function api(): Api {
       settings: async () => receipts.receiptSettings(db),
       saveSettings: async (input) => receipts.saveReceiptSettings(db, input)
     },
+    appearance: {
+      set: async (scheme) => {
+        nativeTheme.themeSource = scheme === 'dark' ? 'dark' : 'light'
+      }
+    },
     doorTablet: lanApi(door),
     staffDevices: lanApi(staffDevices),
     updates: {
@@ -122,7 +127,8 @@ function api(): Api {
   }
 }
 
-const PUBLIC = new Set(['auth.status', 'auth.login', 'auth.setPassword'])
+// The sign-in screen follows the chosen appearance too.
+const PUBLIC = new Set(['auth.status', 'auth.login', 'auth.setPassword', 'appearance.set'])
 // Before any password exists, the first-run screen may restore a backup.
 const FIRST_RUN = new Set([
   'backup.status',

@@ -83,7 +83,7 @@ export function UpdatesCard() {
         </Text>
       ) : (
         <>
-          <Text size="sm" c={data.state === 'error' ? 'orange.8' : undefined} mb="md">
+          <Text size="sm" c={data.state === 'error' ? 'var(--app-orange-text)' : undefined} mb="md">
             {describe(data)}
           </Text>
           <Group>
