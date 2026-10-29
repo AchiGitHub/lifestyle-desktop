@@ -14,8 +14,11 @@ import * as visits from './visits'
 
 export type DomainApi = Omit<
   Api,
-  'auth' | 'backup' | 'reminders' | 'receipts' | 'summary' | 'updates' | 'doorTablet' | 'staffDevices'
->
+  'auth' | 'backup' | 'reminders' | 'receipts' | 'summary' | 'updates' | 'doorTablet' | 'staffDevices' | 'reports'
+> & {
+  // Saving the accounts workbook needs a file dialog, so that part is in ipc.ts.
+  reports: Pick<Api['reports'], 'dashboard'>
+}
 
 /**
  * The data-handling half of the API. Auth, backup, and the groups that open

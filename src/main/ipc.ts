@@ -11,6 +11,7 @@ import { members, registrations } from './db/schema'
 import type { LanService } from './lan/service'
 import { printHtml } from './print'
 import { receiptHtml } from './print/html'
+import { saveAccounts, showSaved } from './reports'
 import * as auth from './services/auth'
 import { recordCreditReminder } from './services/credit'
 import { AppError } from './services/errors'
@@ -34,8 +35,10 @@ const lanApi = (lan: LanService): Api['doorTablet'] & Api['staffDevices'] => ({
 
 function api(): Api {
   const db = conn().db
+  const services = domain()
   return {
-    ...domain(),
+    ...services,
+    reports: { ...services.reports, accounts: saveAccounts, showSaved },
     auth: {
       status: async () => ({
         hasPassword: auth.hasPassword(db),

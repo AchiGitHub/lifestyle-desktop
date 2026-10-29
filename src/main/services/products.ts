@@ -112,6 +112,7 @@ export function sellProduct(db: Db, raw: SellInput, by?: Recorder): string {
       productId: product.id,
       quantity: input.quantity,
       amount: product.sellingPrice * input.quantity,
+      unitCost: product.price,
       recordedBy: by?.name ?? null,
       deviceId: by?.deviceId ?? null
     }

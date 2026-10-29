@@ -71,6 +71,13 @@
       "when": 1793271266217,
       "tag": "0009_personal_training",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793277503419,
+      "tag": "0010_sale_cost",
+      "breakpoints": true
     }
   ]
 }

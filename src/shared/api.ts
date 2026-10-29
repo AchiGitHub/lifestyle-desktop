@@ -669,6 +669,10 @@ export interface Api {
   reports: {
     /** The dashboard for a 'YYYY-MM' month (a later month means this one). */
     dashboard(month: string): Promise<DashboardReport>
+    /** Saves the accountant's Excel workbook for a period where staff choose; the path, or null if they cancelled. */
+    accounts(range: DateRangeInput): Promise<string | null>
+    /** Shows the workbook just saved in File Explorer. */
+    showSaved(): Promise<void>
   }
   backup: {
     status(): Promise<BackupStatus>

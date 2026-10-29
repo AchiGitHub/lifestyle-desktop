@@ -29,6 +29,7 @@ import {
   type PaymentType
 } from '@shared/enums'
 import { receiptNumber } from '@shared/format'
+import { AccountsReportButton } from '../components/AccountsReport'
 import { AppTable } from '../components/AppTable'
 import { useMemberDrawer } from '../components/MemberDrawer'
 import { PageHeader } from '../components/PageHeader'
@@ -268,7 +269,11 @@ export function Payments() {
 
   return (
     <>
-      <PageHeader title="Payments" description="Every payment taken, for memberships and the store" />
+      <PageHeader
+        title="Payments"
+        description="Every payment taken, for memberships, personal training and the store"
+        actions={<AccountsReportButton />}
+      />
       <Group mb="md">
         <SegmentedControl
           value={view}

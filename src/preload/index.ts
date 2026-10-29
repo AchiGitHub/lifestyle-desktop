@@ -14,7 +14,7 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   trainers: ['list', 'create', 'update', 'setArchived', 'delete'],
   ptPackages: ['list', 'create', 'update', 'setArchived', 'delete'],
   personalTraining: ['list', 'create', 'update', 'delete', 'addPayment', 'sessions', 'commission'],
-  reports: ['dashboard'],
+  reports: ['dashboard', 'accounts', 'showSaved'],
   backup: [
     'status',
     'backupNow',

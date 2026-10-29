@@ -75,6 +75,13 @@ export function shiftMonth(month: string, n: number): string {
   return `${Math.floor(i / 12)}-${pad((i % 12) + 1)}`
 }
 
+/** Sri Lanka's year of assessment containing a date: 1 April to 31 March. */
+export function taxYear(iso: IsoDate): { from: IsoDate; to: IsoDate } {
+  const [y, m] = iso.split('-').map(Number)
+  const start = m >= 4 ? y : y - 1
+  return { from: `${start}-04-01`, to: `${start + 1}-03-31` }
+}
+
 export function monthRange(iso: IsoDate): { from: IsoDate; to: IsoDate } {
   const [y, m] = iso.split('-').map(Number)
   return { from: ymd(y, m - 1, 1), to: ymd(y, m - 1, daysInMonth(y, m - 1)) }

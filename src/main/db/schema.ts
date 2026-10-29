@@ -186,6 +186,8 @@ export const payments = sqliteTable(
     deviceId: text('device_id'),
     /** A payment towards a personal training package. */
     ptRegistrationId: text('pt_registration_id').references(() => ptRegistrations.id, { onDelete: 'restrict' }),
+    /** Store sales: the product's cost price when sold, for the accounts. Null on sales from before it was kept. */
+    unitCost: real('unit_cost'),
     ...timestamps()
   },
   (t) => [
@@ -234,6 +236,8 @@ export const creditSales = sqliteTable(
     productName: text('product_name').notNull(),
     quantity: integer('quantity').notNull(),
     amount: real('amount').notNull(),
+    /** As on payments: the cost price when sold. */
+    unitCost: real('unit_cost'),
     /** Local time 'YYYY-MM-DDTHH:mm:ss'. */
     soldAt: text('sold_at').notNull(),
     /** As on payments: the instructor's name, or null at the front desk. */
