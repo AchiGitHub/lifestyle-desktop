@@ -130,10 +130,27 @@ export const productInput = z.object({
 })
 export type ProductInput = z.input<typeof productInput>
 
+/** Editing a product never changes its stock: that's Received or Count, so a sale made meanwhile isn't undone. */
+export const productEditInput = productInput.omit({ quantity: true })
+export type ProductEditInput = z.input<typeof productEditInput>
+
+const stockQuantity = z.number({ error: 'Enter a number' }).int('Whole numbers only')
+export const stockReceivedInput = z.object({
+  productId: id('Choose a product'),
+  quantity: stockQuantity.min(1, 'At least 1')
+})
+export const stockCountInput = z.object({
+  productId: id('Choose a product'),
+  quantity: stockQuantity.min(0, "Stock can't be negative")
+})
+export type StockInput = z.input<typeof stockCountInput>
+
 export const sellInput = z.object({
   productId: id('Choose a product'),
   quantity: z.number({ error: 'Enter a quantity' }).int('Whole numbers only').min(1, 'At least 1'),
-  paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' })
+  paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' }),
+  /** The member who bought it; none for a walk-in. */
+  memberId: z.string().min(1).nullish()
 })
 export type SellInput = z.input<typeof sellInput>
 
@@ -178,10 +195,14 @@ export const ownerEmailInput = z.preprocess(
   z.union([z.literal(''), z.email('Enter the owner’s Google (Gmail) address, e.g. name@gmail.com')])
 )
 
+const packageIds = z.array(z.string()).max(8, 'List at most 8 packages')
+
 export const reminderInput = z.object({
   registrationId: id('Choose a registration'),
   memberId: id('Choose a member'),
-  kind: z.enum(REMINDER_KINDS)
+  kind: z.enum(REMINDER_KINDS),
+  /** The plans {packages} lists in this message; left out, the ones ticked by default. */
+  packageIds: packageIds.optional()
 })
 export type ReminderInput = z.input<typeof reminderInput>
 
@@ -189,7 +210,7 @@ export type ReminderInput = z.input<typeof reminderInput>
 const template = z.string().trim().min(1, 'The message can’t be empty').max(600, 'Keep the message under 600 characters')
 export const reminderSettingsInput = z.object({
   templates: z.object({ EXPIRING: template, EXPIRED: template, BALANCE: template }),
-  /** Plans listed by {packages}; empty means the most popular ones. */
-  packageIds: z.array(z.string()).max(8, 'List at most 8 packages')
+  /** Plans ticked for {packages} when a reminder is sent; empty means the most popular ones. */
+  packageIds
 })
 export type ReminderSettingsInput = z.input<typeof reminderSettingsInput>

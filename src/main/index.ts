@@ -2,9 +2,11 @@ import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'node:path'
 import { backupDue, backupNow } from './backup'
 import { dailySnapshot, snapshot } from './backup/local'
-import { setDeskWindow, startDoorServer, stopDoorServer } from './door'
+import { door } from './door'
 import { registerIpc } from './ipc'
+import { setDeskWindow } from './lan/service'
 import { paths } from './paths'
+import { staffDevices } from './staff'
 import { conn, openDb } from './state'
 import { quietSummaryUpdate, summaryDue } from './summary'
 import { installingUpdate, startUpdater, updateReady } from './updater'
@@ -88,7 +90,9 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc()
     createWindow()
     setDeskWindow(mainWindow)
-    startDoorServer().catch((e) => console.warn('Door check-in server failed to start:', e))
+    for (const lan of [door, staffDevices]) {
+      lan.start().catch((e) => console.warn(`The server for ${lan.label} failed to start:`, e))
+    }
     dailyLocalCopy()
     setTimeout(() => void quietBackup(), 60_000)
     setTimeout(() => void quietSummaryUpdate(), 90_000)
@@ -121,5 +125,8 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('window-all-closed', () => app.quit())
-  app.on('will-quit', () => void stopDoorServer())
+  app.on('will-quit', () => {
+    void door.stop()
+    void staffDevices.stop()
+  })
 }

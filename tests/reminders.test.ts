@@ -155,6 +155,18 @@ describe('reminders', () => {
     expect(expiring.text).toMatch(/^Prices:\n• Plan \w+ – Rs\. 6,000\n• Plan \w+ – Rs\. 10,000$/)
   })
 
+  it('lists the packages picked when sending, instead of the defaults', () => {
+    const cheap = plan(6000, [addDays(today, -10)])
+    const dear = plan(25000, [])
+    const retired = plan(7000, [], true)
+    save({ EXPIRED: '{packages}' }, [cheap])
+    const text = (packageIds?: string[]) => prepareReminder(db, { registrationId, memberId, kind: 'EXPIRED', packageIds }).text
+    expect(text()).toMatch(/^• Plan \w+ – Rs\. 6,000$/)
+    expect(text([dear, retired, 'deleted'])).toMatch(/^• Plan \w+ – Rs\. 25,000$/)
+    expect(text([dear, cheap])).toMatch(/^• Plan \w+ – Rs\. 6,000\n• Plan \w+ – Rs\. 25,000$/)
+    expect(text([])).toBe('')
+  })
+
   it('explains when a member can’t be messaged', () => {
     const noPhone = seedMember(db, { mobileNumber: '12345' })
     const other = seedRegistration(db, typeId, [noPhone], today, addDays(today, 30))

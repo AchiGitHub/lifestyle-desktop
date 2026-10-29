@@ -49,6 +49,7 @@ The old system runs as three Fly apps:
 - [ ] **Screen size.** Anything from 1366×768 up works, including at 125% scaling.
 - [ ] **Free disk space:** about 500 MB.
 - [ ] **Door check-in tablet (optional).** Any Android tablet with Chrome, or an iPad, on the same Wi-Fi as the PC. Also: can you sign in to the router (to give the PC a fixed address)?
+- [ ] **Instructor phones (optional).** Which instructors will sell store items or update stock on their own phones? Their phones need the gym Wi-Fi. If the gym has a separate staff Wi-Fi, the PC and their phones should be on that one.
 - [ ] **Printer for receipts (optional).** Any printer installed in Windows works. A small 80 mm receipt printer suits the receipt layout best.
 - [ ] **Which phone has the gym's WhatsApp.** You'll link it to the PC for the reminder buttons (2.7), so it needs to be there on the day.
 
@@ -210,8 +211,8 @@ It keeps the newest 30 backups.
 
 1. On the PC, install **WhatsApp** from the Microsoft Store. Link it to the gym's number: on the phone, WhatsApp → **Settings → Linked devices → Link a device**, then scan the QR code on the PC.
 2. In Lifestyle, **Settings → WhatsApp reminders** should no longer say "WhatsApp isn't installed". If WhatsApp can't be installed, the app opens WhatsApp Web in the browser instead: link <https://web.whatsapp.com> the same way.
-3. With the owner, read the three messages and change the wording if they want (Sinhala works). Under **Packages in {packages}**, pick the plans and prices the renewal messages should list. If none are picked, it lists the 5 most popular, which includes the "with Reg." variants. **Save messages.**
-4. On **Renewals due**, press **WhatsApp** on a member the owner knows. WhatsApp opens with the message typed in but not sent. Check it, then send it or delete the text. The row now shows **Messaged**.
+3. With the owner, read the three messages and change the wording if they want (Sinhala works). Under **Packages ticked to start with**, pick the plans the renewal messages usually offer. If none are picked, the 5 most popular are ticked. Staff can change the ticks for each message when sending. **Save messages.**
+4. On **Renewals due**, press **WhatsApp** on a member the owner knows. A window shows the packages to offer and the message. Tick or untick packages, then press **Open WhatsApp**. WhatsApp opens with the message typed in but not sent. Check it, then send it or delete the text. The row now shows **Messaged**.
 
 **Door check-in tablet** (15 min, if they have one):
 
@@ -226,6 +227,27 @@ It keeps the newest 30 backups.
    - **iPad:** turn on *Guided Access* (Settings → Accessibility).
    - The first tap on the page makes it full screen.
 5. **Test it.** Check in a staff member's number on the tablet. It appears under **Check-ins** at the desk.
+
+**Instructor phones** (5 min per phone, if they want it):
+
+Instructors can sell store items and record stock on their own phones. Each phone is paired under the instructor's name, and every sale and stock change records who made it. The page runs on port 8788.
+
+1. **Fixed address and network:** as for the door tablet (steps 1–2 above). If the door tablet is already set up, both are done. Windows allows Lifestyle as a program, not per port, so it shouldn't ask again. If it does, tick **Private** and **Allow**.
+2. **Turn it on.** In Lifestyle, go to **Settings → Instructor phones** and switch it **On**.
+3. **Pair each phone.**
+   1. Press **Pair a phone** and type the instructor's name.
+   2. On their phone, connected to the gym Wi-Fi, they scan the QR code with the camera and open the link. If scanning doesn't work, they open the address shown (e.g. `http://192.168.1.20:8788`) and type the 6-digit code.
+   3. The phone shows the product list, and the desk lists the phone under their name.
+   4. Optionally, they use the browser's **Add to Home screen** (Chrome: **⋮** menu; Safari: **Share**) to get a shortcut.
+4. **Test it.** Sell one item from the phone. The desk shows a short notice ("Kasun sold 1 × …"), and it's listed under **Store → Sales** with their name in the **By** column. Undo it from the phone's **Today** tab.
+5. **Tell the instructors:**
+   - **Sell:** tap the product and set how many. Under **Who's buying?**, choose the member (today's check-ins are listed first, or search by name or phone number), or leave it empty for a walk-in. Then choose Cash, Card or Bank transfer and press **Record sale**.
+   - **Stock:** **Stock arrived** adds a delivery. **Counted it** sets the stock to what's on the shelf.
+   - **Today:** what they've sold today, and the cash they should hand in. A wrong sale can be undone for 10 minutes. After that, the desk deletes it in **Payments**.
+   - Prices and the product list are changed at the desk only.
+   - The phone needs the gym Wi-Fi and the app open at the desk. Otherwise it says *"Can't reach the front desk computer"* and nothing is recorded.
+
+**Security note:** the page uses plain `http` on the local network. Someone on the same Wi-Fi with the right tools could copy a phone's sign-in and record false sales or stock changes. Every phone action shows at the desk with the phone's name and time. **Remove** in Settings cuts a phone off at once. When choosing a buyer, phones see members' names and the last 3 digits of their phone. Searches are limited to 20 results and a few a minute. Phones never see other member details or cost prices.
 
 **Receipts** (5 min):
 
@@ -254,9 +276,10 @@ It keeps the newest 30 backups.
   3. enter what they paid
   4. review and save
 - **Renewals due / Not renewed:** press **WhatsApp** (or call), then **Renew** or **Dismiss**. Don't delete. The old app lost two years of registration history because registrations were deleted to clear lists.
-  - WhatsApp opens with a reminder typed in; read it and press send. The button then says **Messaged**, so nobody messages the same person twice. For couples it asks who to send to.
+  - **WhatsApp** first shows the message. Tick the packages to offer this person (for couples, also choose who to send to), then press **Open WhatsApp**. WhatsApp opens with the reminder typed in; read it and press send. The button then says **Messaged**, so nobody messages the same person twice.
 - **Member details:** click any name. From there you can add a payment or send a **WhatsApp payment reminder** (… menu on a registration), renew, or edit.
-- **Store → Sell.**
+- **Store → Sell.** Choose the member under **Bought by**, or leave it empty for a walk-in. The purchase then shows in the member's details, and the receipt's WhatsApp button goes to them. To change stock, use **Stock** on the product's row: **Stock arrived** adds a delivery, and **Counted the shelf** sets it to what's there. **Edit** no longer changes stock, so a sale made on an instructor's phone meanwhile isn't undone. **Store → Stock changes** lists every delivery and count, with who made it.
+- **Instructor phones:** a short notice shows each sale or stock change made on a phone. **Store → Sales** shows who sold each item, in the **By** column.
 - **Door tablet:** members type their mobile number and tap their name. Anyone expired, owing money or with no membership is asked to see the desk. An alert pops up here with an **Open** button; it stays until it's closed.
   - **Check-ins** lists everyone who came in.
   - Use **Check in a member** there, or **Check in** on a member's details, for people who don't use the tablet.
@@ -333,6 +356,7 @@ npm run release                          # builds, then uploads a *draft* releas
 
 **Notes:**
 - **First install by hand:** the first version with automatic updates has to be installed by hand once (§2.5). Every version after that arrives by itself.
+- **Features to turn on after updating:** **Instructor phones** (1.1.0) is off until someone switches it on in Settings and pairs the phones (§2.7). The owner can do it with the steps in the owner's sheet. The update adds the stock history and "recorded by" columns to the database when it first opens, after its automatic "Before update" copy.
 - **Rolling back:** publish the previous code again under a higher version number (e.g. 1.0.3 containing 1.0.1's code). Apps only move up in version.
 - **Download check:** the installer isn't code-signed, so the first manual install shows the Windows "unknown publisher" warning. Automatic updates don't, but the app checks every download against the checksum in `latest.yml` from the same release.
 - **Manual fallback:** if the gym PC is offline for a long time, `npm run build:win` still makes an installer you can run by hand, as before.
@@ -365,7 +389,10 @@ If the PC still works but the data is damaged or a mistake needs undoing, use **
 | Tablet says *"Check-in isn't available right now"* | The PC is off or the app is closed, or the PC's address changed. Open the app and check **Settings → Door check-in tablet** shows **On** with an address. If the address changed, pair the tablet again and reserve the address on the router. |
 | Tablet can't open the page at all | Windows Firewall is blocking it, or the network is set to Public. Set the network to **Private**. In *Windows Defender Firewall → Allow an app*, make sure **Lifestyle** is ticked for Private. Also check the tablet is on the same Wi-Fi, not a guest network. |
 | Tablet shows *"Pair this tablet"* | It was removed in Settings or its browser data was cleared. Pair it again. |
-| *"Port … is already used"* in Settings | Another program uses that port. Change the port in **Settings → Door check-in tablet**, then pair the tablet again. |
+| *"Port … is already used"* in Settings | Another program uses that port. Change the port in **Settings → Door check-in tablet** (or **Instructor phones**), then pair the tablet or phones again. |
+| Instructor's phone says *"Can't reach the front desk computer"* | Same causes as the tablet: the app is closed, the phone isn't on the gym Wi-Fi (or is on a guest network), or the PC's address changed. Check **Settings → Instructor phones** shows **On** with an address. |
+| Instructor's phone shows *"Pair this phone"* | It was removed in Settings, or its browser data was cleared. Pair it again under the same name. Its earlier sales keep the name. |
+| An instructor's phone is lost, or they've left | **Settings → Instructor phones →** the bin icon next to their name. The phone is locked out at once. Their past sales and stock changes keep their name. |
 | A published release doesn't show up in the app | Open the release on GitHub. It needs `Lifestyle-Setup-<version>.exe`, its `.blockmap` and `latest.yml`. **Edit** it and attach the missing files from `dist\`, taken from the same build. Then press **Check now** in Settings → App updates. |
 | *"…missing its latest.yml file"* in Settings → App updates | Same fix: the newest release is incomplete. |
 | *"Add the owner's WhatsApp number…"* on Payments → By day | Settings → **Receipts** → owner's WhatsApp number → **Save**. |

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api, AppEvents, CheckInResult, IpcResult } from '../shared/api'
+import type { Api, AppEvents, CheckInResult, IpcResult, StoreChange } from '../shared/api'
 
 const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   auth: ['status', 'login', 'setPassword', 'changePassword', 'logout'],
@@ -9,7 +9,7 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   joiningFee: ['settings', 'save'],
   registrations: ['list', 'get', 'create', 'update', 'dismiss', 'undismiss', 'delete', 'expiring', 'expired'],
   payments: ['list', 'add', 'delete'],
-  products: ['list', 'create', 'update', 'delete', 'sell'],
+  products: ['list', 'create', 'update', 'delete', 'sell', 'receiveStock', 'countStock', 'stockChanges'],
   reports: ['dashboard'],
   backup: [
     'status',
@@ -26,7 +26,8 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   summary: ['days', 'sendToOwner', 'status', 'setEnabled', 'setOwnerEmail', 'updateNow'],
   updates: ['status', 'check', 'install'],
   visits: ['list', 'checkIn', 'delete'],
-  doorTablet: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice']
+  doorTablet: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice'],
+  staffDevices: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice']
 }
 
 // window.api.members.list() → ipc 'api' with method 'members.list'.
@@ -48,12 +49,16 @@ const api = Object.fromEntries(
 
 contextBridge.exposeInMainWorld('api', api)
 
-// Pushed from the main process: a member checked in at the door tablet.
+function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
+  const listener = (_event: unknown, payload: T) => callback(payload)
+  ipcRenderer.on(channel, listener)
+  return () => void ipcRenderer.removeListener(channel, listener)
+}
+
+// Pushed from the main process: a member checked in at the door tablet, or an
+// instructor sold something or changed stock on their phone.
 const events: AppEvents = {
-  onCheckIn: (callback) => {
-    const listener = (_event: unknown, result: CheckInResult) => callback(result)
-    ipcRenderer.on('checkin', listener)
-    return () => void ipcRenderer.removeListener('checkin', listener)
-  }
+  onCheckIn: (callback) => subscribe<CheckInResult>('checkin', callback),
+  onStoreChange: (callback) => subscribe<StoreChange>('storeChanged', callback)
 }
 contextBridge.exposeInMainWorld('events', events)

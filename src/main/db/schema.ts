@@ -7,6 +7,7 @@ import {
   PAYMENT_TYPES,
   PRODUCT_TYPES,
   REMINDER_KINDS,
+  STOCK_CHANGE_KINDS,
   VISIT_SOURCES,
   VISIT_STATUSES
 } from '../../shared/enums'
@@ -120,13 +121,41 @@ export const payments = sqliteTable(
     paidAt: text('paid_at'),
     /** Shown as R-00124. Numbered in date order for migrated payments. */
     receiptNo: integer('receipt_no'),
+    /** Store sales: the member who bought it, if they're one. */
+    memberId: text('member_id').references(() => members.id, { onDelete: 'set null' }),
+    /** The instructor who recorded it on their phone (their name at the time); null at the front desk. */
+    recordedBy: text('recorded_by'),
+    /** The instructor's phone, for its own list of today's sales and Undo. */
+    deviceId: text('device_id'),
     ...timestamps()
   },
   (t) => [
     index('payments_paid_at_idx').on(t.paidAt),
     index('payments_registration_idx').on(t.registrationId),
+    index('payments_member_idx').on(t.memberId),
     uniqueIndex('payments_receipt_no_idx').on(t.receiptNo)
   ]
+)
+
+/** Stock received or counted. Sales are in payments. */
+export const stockChanges = sqliteTable(
+  'stock_changes',
+  {
+    id: text('id').primaryKey(),
+    productId: text('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: STOCK_CHANGE_KINDS }).notNull(),
+    /** +12 for a delivery; for a count, the difference from what was recorded (−2). */
+    change: integer('change').notNull(),
+    quantityAfter: integer('quantity_after').notNull(),
+    /** As on payments: the instructor's name, or null at the front desk. */
+    recordedBy: text('recorded_by'),
+    deviceId: text('device_id'),
+    /** Local time 'YYYY-MM-DDTHH:mm:ss'. */
+    changedAt: text('changed_at').notNull()
+  },
+  (t) => [index('stock_changes_changed_at_idx').on(t.changedAt), index('stock_changes_product_idx').on(t.productId)]
 )
 
 /** Check-ins at the door tablet or the front desk. */

@@ -2,26 +2,43 @@ import { describe, expect, it } from 'vitest'
 import { addDays, computeEndDate, monthRange, shiftMonth } from '../src/shared/dates'
 
 describe('computeEndDate', () => {
-  it('adds days', () => {
-    expect(computeEndDate('2026-10-27', 1, 'DAY')).toBe('2026-10-28')
-    expect(computeEndDate('2026-12-30', 5, 'DAY')).toBe('2027-01-04')
+  it('ends the day before: a 1-day pass ends the day it starts', () => {
+    expect(computeEndDate('2026-10-27', 1, 'DAY')).toBe('2026-10-27')
+    expect(computeEndDate('2026-12-30', 5, 'DAY')).toBe('2027-01-03')
   })
 
-  it('adds months, rolling into the next year', () => {
-    expect(computeEndDate('2026-10-27', 1, 'MONTH')).toBe('2026-11-27')
-    expect(computeEndDate('2026-11-15', 3, 'MONTH')).toBe('2027-02-15')
-    expect(computeEndDate('2026-01-10', 12, 'MONTH')).toBe('2027-01-10')
+  it('ends the day before the same date in a later month', () => {
+    expect(computeEndDate('2026-10-01', 1, 'MONTH')).toBe('2026-10-31')
+    expect(computeEndDate('2026-10-27', 1, 'MONTH')).toBe('2026-11-26')
+    expect(computeEndDate('2026-11-15', 3, 'MONTH')).toBe('2027-02-14')
+    expect(computeEndDate('2026-01-01', 12, 'MONTH')).toBe('2026-12-31')
+    expect(computeEndDate('2026-03-01', 1, 'MONTH')).toBe('2026-03-31')
   })
 
-  it('clamps to the end of a shorter month', () => {
+  it('ends on the last day of a shorter month when the same date doesn’t exist', () => {
     expect(computeEndDate('2026-01-31', 1, 'MONTH')).toBe('2026-02-28')
     expect(computeEndDate('2024-01-31', 1, 'MONTH')).toBe('2024-02-29')
+    expect(computeEndDate('2024-01-30', 1, 'MONTH')).toBe('2024-02-29')
+    expect(computeEndDate('2024-01-29', 1, 'MONTH')).toBe('2024-02-28')
+    expect(computeEndDate('2026-03-31', 1, 'MONTH')).toBe('2026-04-30')
     expect(computeEndDate('2026-08-31', 6, 'MONTH')).toBe('2027-02-28')
   })
 
-  it('adds years, including from 29 February', () => {
-    expect(computeEndDate('2026-10-27', 1, 'YEAR')).toBe('2027-10-27')
+  it('does years the same way, including from 29 February', () => {
+    expect(computeEndDate('2026-10-27', 1, 'YEAR')).toBe('2027-10-26')
+    expect(computeEndDate('2026-01-01', 1, 'YEAR')).toBe('2026-12-31')
     expect(computeEndDate('2024-02-29', 1, 'YEAR')).toBe('2025-02-28')
+  })
+
+  it('lets renewals follow on without drifting a day each time', () => {
+    let start = '2026-10-01'
+    const ends: string[] = []
+    for (let i = 0; i < 4; i++) {
+      const end = computeEndDate(start, 1, 'MONTH')
+      ends.push(end)
+      start = addDays(end, 1) // a renewal starts the day after
+    }
+    expect(ends).toEqual(['2026-10-31', '2026-11-30', '2026-12-31', '2027-01-31'])
   })
 })
 

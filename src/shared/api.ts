@@ -5,6 +5,7 @@ import type {
   PaymentType,
   ProductType,
   ReminderKind,
+  StockChangeKind,
   VisitSource,
   VisitStatus
 } from './enums'
@@ -16,6 +17,7 @@ import type {
   MembershipTypeInput,
   PaymentAddInput,
   PaymentFilterInput,
+  ProductEditInput,
   ProductInput,
   ReceiptRecipientInput,
   ReceiptSettingsInput,
@@ -23,7 +25,8 @@ import type {
   RegistrationUpdateInput,
   ReminderInput,
   ReminderSettingsInput,
-  SellInput
+  SellInput,
+  StockInput
 } from './schemas'
 
 export interface Member {
@@ -119,6 +122,11 @@ export interface Payment {
   /** Member names, product name, or a note for migrated payments. */
   description: string
   receiptNo: number | null
+  /** Store sales: the member who bought it, if they're one. */
+  memberId: string | null
+  memberName: string | null
+  /** The instructor who recorded it on their phone; null at the front desk. */
+  recordedBy: string | null
 }
 
 export interface Product {
@@ -130,6 +138,65 @@ export interface Product {
   sellingPrice: number
   sold: number
 }
+
+/** A product as an instructor's phone sees it: no cost price. */
+export type StaffProduct = Pick<Product, 'id' | 'name' | 'productType' | 'sellingPrice' | 'quantity'>
+
+/** A sale on an instructor's phone, in its list for today. */
+export interface StaffSale {
+  id: string
+  /** Local 'YYYY-MM-DDTHH:mm:ss'. */
+  paidAt: string
+  productName: string
+  quantity: number
+  amount: number
+  paymentType: PaymentType
+  /** Who bought it, if a member was chosen. */
+  memberName: string | null
+  /** How much longer the phone may undo it, as of the reply (0 when it can't). */
+  undoSecondsLeft: number
+}
+
+/** A member an instructor can choose as the buyer: name, and the last digits of their phone to tell two apart. */
+export interface MemberChoice {
+  id: string
+  name: string
+  phoneEnding: string | null
+}
+
+export interface StockChange {
+  id: string
+  productId: string
+  productName: string
+  kind: StockChangeKind
+  /** +12 for a delivery; for a count, the difference from what was recorded. */
+  change: number
+  quantityAfter: number
+  /** The instructor's name; null at the front desk. */
+  recordedBy: string | null
+  /** Local 'YYYY-MM-DDTHH:mm:ss'. */
+  changedAt: string
+}
+
+/** Where a product's stock stands after Received or Count. */
+export interface StockResult {
+  productName: string
+  change: number
+  quantityAfter: number
+}
+
+/** Something an instructor just did on their phone, for the notice at the desk. */
+export type StoreChange =
+  | {
+      kind: 'SALE' | 'UNDO'
+      by: string
+      productName: string
+      quantity: number
+      amount: number
+      paymentType: PaymentType
+      memberName: string | null
+    }
+  | ({ kind: StockChangeKind; by: string } & StockResult)
 
 export interface MemberDetail {
   member: Member
@@ -168,24 +235,26 @@ export interface CheckInCandidate {
   name: string
 }
 
-export interface DoorDevice {
+/** A door tablet or instructor phone paired with this PC. */
+export interface LanDevice {
   id: string
   name: string
   pairedAt: string
   lastSeenAt: string | null
 }
 
-export interface DoorTabletStatus {
+/** The door tablet's or instructor phones' server on the gym network. */
+export interface LanStatus {
   enabled: boolean
   running: boolean
   port: number
-  /** Addresses the tablet can open, e.g. http://192.168.1.20:8787. */
+  /** Addresses the device can open, e.g. http://192.168.1.20:8787. */
   addresses: string[]
-  devices: DoorDevice[]
+  devices: LanDevice[]
   error: string | null
 }
 
-export interface DoorPairing {
+export interface LanPairing {
   code: string
   url: string
   expiresAt: string
@@ -411,10 +480,15 @@ export interface Api {
   products: {
     list(): Promise<Product[]>
     create(input: ProductInput): Promise<void>
-    update(id: string, input: ProductInput): Promise<void>
+    update(id: string, input: ProductEditInput): Promise<void>
     delete(ids: string[]): Promise<void>
     /** Returns the sale's payment id. */
     sell(input: SellInput): Promise<string>
+    /** Adds a delivery to the stock. */
+    receiveStock(input: StockInput): Promise<StockResult>
+    /** Sets the stock to what's on the shelf. */
+    countStock(input: StockInput): Promise<StockResult>
+    stockChanges(range: DateRangeInput): Promise<StockChange[]>
   }
   reports: {
     /** The dashboard for a 'YYYY-MM' month (a later month means this one). */
@@ -452,11 +526,20 @@ export interface Api {
     delete(id: string): Promise<void>
   }
   doorTablet: {
-    status(): Promise<DoorTabletStatus>
+    status(): Promise<LanStatus>
     setEnabled(enabled: boolean): Promise<void>
     setPort(port: number): Promise<void>
     /** A one-time code (10 minutes) and link for pairing a tablet. */
-    startPairing(): Promise<DoorPairing>
+    startPairing(): Promise<LanPairing>
+    removeDevice(id: string): Promise<void>
+  }
+  /** Instructors' phones, for store sales and stock. */
+  staffDevices: {
+    status(): Promise<LanStatus>
+    setEnabled(enabled: boolean): Promise<void>
+    setPort(port: number): Promise<void>
+    /** As for the door tablet; the phone is listed under the instructor's name. */
+    startPairing(name: string): Promise<LanPairing>
     removeDevice(id: string): Promise<void>
   }
   updates: {
@@ -481,6 +564,7 @@ export interface Api {
 /** Things the main process tells the window about; each returns an unsubscribe function. */
 export interface AppEvents {
   onCheckIn(callback: (result: CheckInResult) => void): () => void
+  onStoreChange(callback: (change: StoreChange) => void): () => void
 }
 
 /** What crosses the IPC boundary: errors travel as plain messages. */

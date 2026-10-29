@@ -21,6 +21,8 @@ import {
   IconBrandGoogleDrive,
   IconBrandWhatsapp,
   IconCloudUpload,
+  IconDeviceMobile,
+  IconDeviceTablet,
   IconFileImport,
   IconInfoCircle,
   IconPrinter,
@@ -40,7 +42,7 @@ import {
   type ReceiptSettingsInput,
   type ReminderSettingsInput
 } from '@shared/schemas'
-import { DoorTabletCard } from '../components/DoorTabletCard'
+import { LanDevicesCard } from '../components/LanDevicesCard'
 import { OwnerSummaryCard } from '../components/OwnerSummaryCard'
 import { PageHeader } from '../components/PageHeader'
 import { UpdatesCard } from '../components/Updates'
@@ -343,7 +345,7 @@ function RemindersForm({ settings }: { settings: ReminderSettings }) {
         The WhatsApp buttons on Renewals due, Not renewed and a member’s unpaid registration open a chat with one of these
         messages typed in; check it, then press send. <Code>{'{name}'}</Code>, <Code>{'{plan}'}</Code>,{' '}
         <Code>{'{endDate}'}</Code> and <Code>{'{balance}'}</Code> are filled in for each member, and{' '}
-        <Code>{'{packages}'}</Code> becomes a price list of the packages below.
+        <Code>{'{packages}'}</Code> becomes a price list of the packages ticked when the reminder is sent.
       </Text>
       {!settings.whatsappDesktop && (
         <Alert color="gray" icon={<IconInfoCircle />} mb="md">
@@ -354,8 +356,8 @@ function RemindersForm({ settings }: { settings: ReminderSettings }) {
       <form onSubmit={form.onSubmit((v) => save.mutate([v], { onSuccess: () => form.resetDirty(v) }))}>
         <Stack>
           <MultiSelect
-            label="Packages in {packages}"
-            description="Listed cheapest first. Leave empty to list the 5 most popular plans of the last 12 months."
+            label="Packages ticked to start with"
+            description="Staff choose the packages each time they send a renewal reminder; these are ticked to begin with. Leave empty to tick the 5 most popular plans of the last 12 months."
             placeholder={chosen.length === 0 ? 'The 5 most popular plans' : undefined}
             data={plans.filter((p) => !p.archived).map((p) => ({ value: p.id, label: `${p.name} – ${lkr(p.price)}` }))}
             searchable
@@ -454,7 +456,21 @@ export function Settings() {
         <LocalCard />
         <RemindersCard />
         <ReceiptsCard />
-        <DoorTabletCard />
+        <LanDevicesCard
+          group="doorTablet"
+          title="Door check-in tablet"
+          icon={<IconDeviceTablet />}
+          noun="tablet"
+          description="Members check themselves in on a tablet at the door, over the gym’s Wi-Fi. The tablet opens a page served by this computer, so this computer must be on with the app open."
+        />
+        <LanDevicesCard
+          group="staffDevices"
+          title="Instructor phones"
+          icon={<IconDeviceMobile />}
+          noun="phone"
+          named
+          description="Instructors record store sales and stock on their own phones, over the gym’s Wi-Fi. Each phone is paired under the instructor’s name, so every sale and stock change shows who made it. This computer must be on with the app open."
+        />
         <UpdatesCard />
         <PasswordCard />
       </Stack>

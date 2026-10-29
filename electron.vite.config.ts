@@ -32,8 +32,13 @@ export default defineConfig({
     plugins: [react(), contentSecurityPolicy],
     build: {
       rollupOptions: {
-        // The desk app, and the door check-in page the app serves to the tablet.
-        input: { index: resolve('src/renderer/index.html'), door: resolve('src/renderer/door.html') }
+        // The desk app, and the pages the app serves on the gym network: door
+        // check-in for the tablet, and store sales and stock for instructors' phones.
+        input: {
+          index: resolve('src/renderer/index.html'),
+          door: resolve('src/renderer/door.html'),
+          staff: resolve('src/renderer/staff.html')
+        }
       }
     }
   }

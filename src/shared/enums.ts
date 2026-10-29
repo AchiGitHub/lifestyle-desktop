@@ -31,6 +31,14 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   OTHER: 'Other'
 }
 
+/** Stock at or below this shows as running low. */
+export const LOW_STOCK = 5
+
+/** How stock changed other than by a sale: a delivery, or a count of the shelf. */
+export const STOCK_CHANGE_KINDS = ['RECEIVED', 'COUNT'] as const
+export type StockChangeKind = (typeof STOCK_CHANGE_KINDS)[number]
+export const STOCK_CHANGE_KIND_LABELS: Record<StockChangeKind, string> = { RECEIVED: 'Received', COUNT: 'Count' }
+
 /** Store sales use the product type as their category. */
 export const PAYMENT_CATEGORIES = ['MEMBERSHIP', 'SUPPLEMENT', 'BEVERAGE', 'OTHER'] as const
 export type PaymentCategory = (typeof PAYMENT_CATEGORIES)[number]

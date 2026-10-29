@@ -49,6 +49,9 @@ interface PaymentRow {
   category: PaymentCategory
   paidAt: string | null
   receiptNo: number | null
+  memberId: string | null
+  memberName: string | null
+  recordedBy: string | null
   registrationName: string | null
   memberNames: string | null
   productName: string | null
@@ -65,13 +68,16 @@ export function loadPayments(db: Db, where: SQL): Payment[] {
   const rows = db.all<PaymentRow>(sql`
     select p.id, p.registration_id as registrationId, p.legacy_registration_id as legacyRegistrationId,
       p.product_id as productId, p.quantity, p.amount, p.payment_type as paymentType, p.category,
-      p.paid_at as paidAt, p.receipt_no as receiptNo, r.name as registrationName, pr.name as productName,
+      p.paid_at as paidAt, p.receipt_no as receiptNo, p.recorded_by as recordedBy,
+      p.member_id as memberId, trim(buyer.first_name || ' ' || buyer.last_name) as memberName,
+      r.name as registrationName, pr.name as productName,
       (select group_concat(trim(m.first_name || ' ' || m.last_name), ', ')
          from registration_members rm join members m on m.id = rm.member_id
          where rm.registration_id = p.registration_id) as memberNames
     from payments p
     left join registrations r on r.id = p.registration_id
     left join products pr on pr.id = p.product_id
+    left join members buyer on buyer.id = p.member_id
     where ${where}
     order by p.paid_at desc, p.created_at desc`)
   return rows.map((p) => ({
@@ -85,7 +91,10 @@ export function loadPayments(db: Db, where: SQL): Payment[] {
     category: p.category,
     paidAt: p.paidAt,
     description: describe(p),
-    receiptNo: p.receiptNo
+    receiptNo: p.receiptNo,
+    memberId: p.memberId,
+    memberName: p.memberName,
+    recordedBy: p.recordedBy
   }))
 }
 
@@ -99,10 +108,12 @@ export function listPayments(db: Db, raw: PaymentFilterInput): Payment[] {
   return loadPayments(db, sql.join(conditions, sql` and `))
 }
 
+/** Their membership payments and the store items they bought. */
 export function paymentsForMember(db: Db, memberId: string): Payment[] {
   return loadPayments(
     db,
-    sql`p.registration_id in (select registration_id from registration_members where member_id = ${memberId})`
+    sql`(p.registration_id in (select registration_id from registration_members where member_id = ${memberId})
+      or p.member_id = ${memberId})`
   )
 }
 

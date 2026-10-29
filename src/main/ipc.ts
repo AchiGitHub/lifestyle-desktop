@@ -6,8 +6,9 @@ import { daySummaryText, receiptText } from '../shared/receipts'
 import { whatsappNumber } from '../shared/reminders'
 import * as backup from './backup'
 import { snapshot } from './backup/local'
-import * as door from './door'
+import { door } from './door'
 import { members, registrations } from './db/schema'
+import type { LanService } from './lan/service'
 import { printHtml } from './print'
 import { receiptHtml } from './print/html'
 import * as auth from './services/auth'
@@ -17,9 +18,18 @@ import * as reminders from './services/reminders'
 import * as summary from './services/summary'
 import * as ownerSummary from './summary'
 import { paths } from './paths'
+import { staffDevices } from './staff'
 import { conn, domain, isAuthenticated, setAuthenticated } from './state'
 import * as updater from './updater'
 import { hasWhatsAppDesktop, openChat } from './whatsapp'
+
+const lanApi = (lan: LanService): Api['doorTablet'] & Api['staffDevices'] => ({
+  status: async () => lan.status(),
+  setEnabled: (on) => lan.setEnabled(on),
+  setPort: (port) => lan.setPort(port),
+  startPairing: async (name?: string) => lan.startPairing(name),
+  removeDevice: async (id) => lan.removeDevice(id)
+})
 
 function api(): Api {
   const db = conn().db
@@ -80,13 +90,8 @@ function api(): Api {
       settings: async () => receipts.receiptSettings(db),
       saveSettings: async (input) => receipts.saveReceiptSettings(db, input)
     },
-    doorTablet: {
-      status: async () => door.doorStatus(),
-      setEnabled: door.setDoorEnabled,
-      setPort: door.setDoorPort,
-      startPairing: async () => door.startPairing(),
-      removeDevice: async (id) => door.removeDevice(id)
-    },
+    doorTablet: lanApi(door),
+    staffDevices: lanApi(staffDevices),
     updates: {
       status: async () => updater.updateStatus(),
       check: updater.checkForUpdate,

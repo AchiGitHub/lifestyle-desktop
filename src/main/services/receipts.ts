@@ -11,7 +11,7 @@ import {
   type ReceiptSettingsInput
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
-import { payments, products } from '../db/schema'
+import { members, payments, products } from '../db/schema'
 import { AppError } from './errors'
 import { getRegistration } from './registrations'
 import { putSetting, readSettings } from './settings'
@@ -95,9 +95,22 @@ export function getReceipt(db: Db, paymentId: string): Receipt {
   const product = payment.productId
     ? db.select({ name: products.name }).from(products).where(eq(products.id, payment.productId)).get()
     : undefined
+  // A store sale names its buyer, so the receipt can go to their WhatsApp.
+  const buyer = payment.memberId
+    ? db
+        .select({
+          id: members.id,
+          firstName: members.firstName,
+          lastName: members.lastName,
+          mobileNumber: members.mobileNumber
+        })
+        .from(members)
+        .where(eq(members.id, payment.memberId))
+        .get()
+    : undefined
   return {
     ...base,
-    members: [],
+    members: buyer ? [buyer] : [],
     item: product?.name ?? (payment.legacyRegistrationId ? 'Membership fee' : PAYMENT_CATEGORY_LABELS[payment.category]),
     detail: payment.quantity ? `${payment.quantity} × ${rupees(payment.amount / payment.quantity)}` : null,
     registration: null

@@ -1,4 +1,5 @@
 import type { Api } from '../../shared/api'
+import type { SellInput, StockInput } from '../../shared/schemas'
 import type { Db } from '../db/client'
 import * as joining from './joining'
 import * as members from './members'
@@ -9,7 +10,10 @@ import * as registrations from './registrations'
 import { dashboardReport } from './reports'
 import * as visits from './visits'
 
-export type DomainApi = Omit<Api, 'auth' | 'backup' | 'reminders' | 'receipts' | 'summary' | 'updates' | 'doorTablet'>
+export type DomainApi = Omit<
+  Api,
+  'auth' | 'backup' | 'reminders' | 'receipts' | 'summary' | 'updates' | 'doorTablet' | 'staffDevices'
+>
 
 /**
  * The data-handling half of the API. Auth, backup, and the groups that open
@@ -75,7 +79,11 @@ export function createServices(db: Db): DomainApi {
       create: sync(products.createProduct),
       update: sync(products.updateProduct),
       delete: sync(products.deleteProducts),
-      sell: sync(products.sellProduct)
+      // At the front desk: nobody's phone is recorded.
+      sell: sync((d: Db, input: SellInput) => products.sellProduct(d, input)),
+      receiveStock: sync((d: Db, input: StockInput) => products.receiveStock(d, input)),
+      countStock: sync((d: Db, input: StockInput) => products.countStock(d, input)),
+      stockChanges: sync(products.listStockChanges)
     },
     reports: {
       dashboard: sync(dashboardReport)

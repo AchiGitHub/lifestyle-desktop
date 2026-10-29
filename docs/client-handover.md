@@ -14,6 +14,7 @@
 - The gym system now runs **on this computer**. There are no more monthly hosting fees.
 - **It works without internet.** Internet is only needed for the daily backup.
 - All your members, registrations, payments and products came across from the old system.
+- **A membership ends the day before the same date.** One month from 1 Oct ends on 31 Oct, and a renewal starts the next day. The end date can still be changed by hand.
 - **Income figures are now the money actually received.** The old dashboard multiplied plan prices by the number of sign-ups, so its totals looked different.
 
 ## Opening it
@@ -45,12 +46,15 @@ Double-click **Lifestyle** on the desktop and type the password. Always use the 
 | Sign up a new member | **New registration** (top right) → plan → members → payment → save. The joining fee is added automatically for new members; untick it to waive it. Renewals don't add it, so tick it if someone should pay it again |
 | Change a joining fee, or how long a break counts as re-joining | **Plans** → edit the plan's joining fee, or change the days at the top of the page |
 | Renew someone | **Renewals due** or **Not renewed** → **Renew**, or click their name → **Renew** |
-| Follow up on memberships ending this month | **Renewals due**: press **WhatsApp** (or call), then **Renew** or **Dismiss** |
-| Win back people who stopped coming | **Not renewed**: press **WhatsApp** (or call), then **Renew** or **Dismiss** |
+| Follow up on memberships ending this month | **Renewals due**: press **WhatsApp**, tick the packages to offer, then **Open WhatsApp** (or call). Then **Renew** or **Dismiss** |
+| Win back people who stopped coming | **Not renewed**: press **WhatsApp**, tick the packages to offer, then **Open WhatsApp** (or call). Then **Renew** or **Dismiss** |
 | Take money from someone who owes | Click their name → **…** on the registration → **Add payment** |
 | Remind someone who owes | Click their name → **…** on the registration → **WhatsApp payment reminder** |
-| Change the WhatsApp wording, or the packages and prices it lists | **Settings** → **WhatsApp reminders** → **Save messages** |
-| Sell a drink or supplement | **Store** → **Sell** |
+| Change the WhatsApp wording, or which packages are ticked to start with | **Settings** → **WhatsApp reminders** → **Save messages** |
+| Sell a drink or supplement | **Store** → **Sell**. Choose the member under **Bought by** (leave it empty for a walk-in); it then shows in their details |
+| Record a delivery, or correct stock after counting the shelf | **Store** → **Stock** on the product → **Stock arrived** or **Counted the shelf**. **Store → Stock changes** lists every change and who made it |
+| Let an instructor sell or update stock on their phone | **Settings** → **Instructor phones** → **Pair a phone**, type their name, then they scan the code with their phone on the gym Wi-Fi. Their sales show under **Store → Sales** with their name, and a notice pops up here as they happen |
+| Stop a phone (lost, or the instructor left) | **Settings** → **Instructor phones** → bin icon next to their name. Their past sales keep their name |
 | Give a receipt | It opens after every payment: press **WhatsApp** or **Print**. For an older payment: **Payments** → receipt icon on its row |
 | See the day's takings | **Payments** → **By day**: cash, card and bank transfer for each day. Click a day to see its payments; the WhatsApp button sends that day's summary to the owner |
 | Check the gym from your phone (owner) | Open the **Lifestyle daily summary** sheet Google emailed you, in the Google Sheets app. It updates every hour while the app is open, and when it's closed at night |

@@ -1,7 +1,14 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import type { PairedDevice } from './door/pairing'
+﻿import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import type { PairedDevice } from './lan/pairing'
 import { paths } from './paths'
 import type { SheetState } from './summary/sync'
+
+/** A server on the gym network, and the devices paired to it. */
+export interface LanConfig {
+  enabled: boolean
+  port: number
+  devices: PairedDevice[]
+}
 
 /**
  * Settings that belong to this PC rather than to the data: the Google Drive
@@ -21,11 +28,9 @@ export interface MachineConfig {
     lastError?: string | null
   }
   /** The door check-in tablet: this PC's server and the tablets paired to it. */
-  doorTablet?: {
-    enabled: boolean
-    port: number
-    devices: PairedDevice[]
-  }
+  doorTablet?: LanConfig
+  /** Instructors' phones for store sales and stock, listed under the instructor's name. */
+  staffDevices?: LanConfig
   /** The owner's daily summary sheet in Google Drive (on unless turned off). */
   ownerSummary?: SheetState & {
     enabled?: boolean

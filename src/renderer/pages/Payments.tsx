@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Group,
   MultiSelect,
@@ -29,6 +30,7 @@ import {
 } from '@shared/enums'
 import { receiptNumber } from '@shared/format'
 import { AppTable } from '../components/AppTable'
+import { useMemberDrawer } from '../components/MemberDrawer'
 import { PageHeader } from '../components/PageHeader'
 import { useReceipt } from '../components/ReceiptDialog'
 import { api, useAction } from '../lib/api'
@@ -41,9 +43,19 @@ export const CATEGORY_BADGE: Record<PaymentCategory, string> = {
   OTHER: 'gray'
 }
 
-export function PaymentsTable({ records, fetching }: { records: Payment[]; fetching?: boolean }) {
+export function PaymentsTable({
+  records,
+  fetching,
+  showRecordedBy
+}: {
+  records: Payment[]
+  fetching?: boolean
+  /** Who recorded each payment: an instructor's name, or the front desk. */
+  showRecordedBy?: boolean
+}) {
   const remove = useAction((id: string) => api.payments.delete(id), { success: 'Payment deleted' })
   const { showReceipt } = useReceipt()
+  const { openMember } = useMemberDrawer()
   return (
     <AppTable<Payment>
       records={records}
@@ -58,7 +70,23 @@ export function PaymentsTable({ records, fetching }: { records: Payment[]; fetch
           sortable: true,
           render: (p) => (p.receiptNo ? receiptNumber(p.receiptNo) : '—')
         },
-        { accessor: 'description', title: 'For', sortable: true },
+        {
+          accessor: 'description',
+          title: 'For',
+          sortable: true,
+          // Store sales name the member who bought them.
+          render: (p) =>
+            p.memberId && p.memberName ? (
+              <div>
+                <Text size="sm">{p.description}</Text>
+                <Anchor component="button" size="xs" c="dimmed" onClick={() => openMember(p.memberId!)}>
+                  {p.memberName}
+                </Anchor>
+              </div>
+            ) : (
+              p.description
+            )
+        },
         {
           accessor: 'category',
           title: 'Category',
@@ -70,6 +98,20 @@ export function PaymentsTable({ records, fetching }: { records: Payment[]; fetch
           )
         },
         { accessor: 'paymentType', title: 'Paid by', render: (p) => PAYMENT_TYPE_LABELS[p.paymentType] },
+        ...(showRecordedBy
+          ? [
+              {
+                accessor: 'recordedBy',
+                title: 'By',
+                render: (p: Payment) =>
+                  p.recordedBy ?? (
+                    <Text size="sm" c="dimmed">
+                      Front desk
+                    </Text>
+                  )
+              }
+            ]
+          : []),
         { accessor: 'amount', title: 'Amount', sortable: true, textAlign: 'right', render: (p) => <b>{lkr(p.amount)}</b> },
         {
           accessor: 'actions',

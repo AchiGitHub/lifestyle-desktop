@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { openDatabase, type Db } from '../src/main/db/client'
-import { durations, members, membershipTypes, registrationMembers, registrations } from '../src/main/db/schema'
+import { durations, members, membershipTypes, products, registrationMembers, registrations } from '../src/main/db/schema'
 import type { MemberInput } from '../src/shared/schemas'
 
 export function makeDb(): Db {
@@ -45,6 +45,14 @@ export function seedMember(db: Db, overrides: Partial<typeof members.$inferInser
   const id = randomUUID()
   db.insert(members)
     .values({ id, firstName: 'Kamal', lastName: 'Silva', gender: 'MALE', mobileNumber: '0711111111', ...overrides })
+    .run()
+  return id
+}
+
+export function seedProduct(db: Db, overrides: Partial<typeof products.$inferInsert> = {}): string {
+  const id = randomUUID()
+  db.insert(products)
+    .values({ id, name: 'Yeti Isotonic', productType: 'BEVERAGE', quantity: 10, price: 245, sellingPrice: 350, ...overrides })
     .run()
   return id
 }

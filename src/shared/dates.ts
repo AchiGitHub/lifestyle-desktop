@@ -51,26 +51,21 @@ export function addDays(start: IsoDate, days: number): IsoDate {
 }
 
 /**
- * End date of a membership: start + N days/months/years. Month and year
- * steps clamp to the last day of a shorter month (31 Jan + 1 month = 28 Feb),
- * which is what the old app's date picker did.
+ * Last day of a membership (it counts as a day of membership): the day before
+ * the same date N days/months/years on. 1 Oct + 1 month ends 31 Oct, so a
+ * renewal starting the next day follows straight on, with no day added each
+ * time. A 1-day pass ends the day it starts. When that date doesn't exist
+ * (31 Jan + 1 month: there's no 31 Feb), it ends on the last day of that month.
  */
 export function computeEndDate(start: IsoDate, duration: number, type: DurationType): IsoDate {
   const [y, m, d] = start.split('-').map(Number)
-  switch (type) {
-    case 'DAY':
-      return ymd(y, m - 1, d + duration)
-    case 'MONTH': {
-      const total = m - 1 + duration
-      const year = y + Math.floor(total / 12)
-      const month = ((total % 12) + 12) % 12
-      return ymd(year, month, Math.min(d, daysInMonth(year, month)))
-    }
-    case 'YEAR': {
-      const year = y + duration
-      return ymd(year, m - 1, Math.min(d, daysInMonth(year, m - 1)))
-    }
-  }
+  if (type === 'DAY') return ymd(y, m - 1, d + duration - 1)
+  const total = m - 1 + (type === 'YEAR' ? duration * 12 : duration)
+  const year = y + Math.floor(total / 12)
+  const month = ((total % 12) + 12) % 12
+  const last = daysInMonth(year, month)
+  // Day 0 of a month is the last day of the month before.
+  return d > last ? ymd(year, month, last) : ymd(year, month, d - 1)
 }
 
 /** A 'YYYY-MM' month moved by n months: shiftMonth('2026-01', -1) is '2025-12'. */

@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from 
 export interface PairedDevice {
   id: string
   name: string
-  /** sha256 of the device token; the token itself only lives on the tablet. */
+  /** sha256 of the device token; the token itself only lives on the device. */
   tokenHash: string
   pairedAt: string
   lastSeenAt: string | null
@@ -21,16 +21,22 @@ const SEEN_EVERY_MS = 60_000
 const hash = (token: string): string => createHash('sha256').update(token).digest('hex')
 
 /**
- * Pairing a tablet: the desk shows a 6-digit code valid for 10 minutes; the
- * tablet trades it once for a long random token. A wrong guess counts
+ * Pairing a device: the desk shows a 6-digit code valid for 10 minutes; the
+ * device trades it once for a long random token. A wrong guess counts
  * against the code, which stops working after 5.
  */
 export function createPairing(store: DeviceStore, now: () => number = Date.now) {
-  let pending: { code: string; expiresAt: number; attempts: number } | null = null
+  let pending: { code: string; expiresAt: number; attempts: number; name?: string } | null = null
 
   return {
-    start(): { code: string; expiresAt: number } {
-      pending = { code: String(randomInt(0, 1_000_000)).padStart(6, '0'), expiresAt: now() + CODE_MINUTES * 60_000, attempts: 0 }
+    /** A new code, for a device to be listed under `name` (door tablets are numbered instead). */
+    start(name?: string): { code: string; expiresAt: number } {
+      pending = {
+        code: String(randomInt(0, 1_000_000)).padStart(6, '0'),
+        expiresAt: now() + CODE_MINUTES * 60_000,
+        attempts: 0,
+        name
+      }
       return { code: pending.code, expiresAt: pending.expiresAt }
     },
 
@@ -41,13 +47,20 @@ export function createPairing(store: DeviceStore, now: () => number = Date.now) 
         pending.attempts++
         return null
       }
+      const name = pending.name
       pending = null
       const token = randomBytes(32).toString('base64url')
       const devices = store.devices()
       const at = new Date(now()).toISOString()
       store.save([
         ...devices,
-        { id: randomUUID(), name: `Tablet ${devices.length + 1}`, tokenHash: hash(token), pairedAt: at, lastSeenAt: at }
+        {
+          id: randomUUID(),
+          name: name ?? `Tablet ${devices.length + 1}`,
+          tokenHash: hash(token),
+          pairedAt: at,
+          lastSeenAt: at
+        }
       ])
       return token
     },

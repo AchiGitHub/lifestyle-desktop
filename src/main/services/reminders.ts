@@ -34,19 +34,21 @@ export function reminderTemplates(db: Db): ReminderTemplates {
   ) as ReminderTemplates
 }
 
-/** Plans the owner picked for {packages}, leaving out any since archived or deleted. */
+/** The plans among `ids` that can still be offered: not archived or deleted. */
+function currentPlans(db: Db, ids: string[]): (PackagePrice & { id: string })[] {
+  if (ids.length === 0) return []
+  return db
+    .select({ id: membershipTypes.id, name: membershipTypes.name, price: membershipTypes.price })
+    .from(membershipTypes)
+    .where(and(inArray(membershipTypes.id, ids), eq(membershipTypes.archived, false)))
+    .all()
+}
+
+/** Plans the owner picked to be ticked for {packages}, leaving out any since archived or deleted. */
 export function chosenPackageIds(db: Db): string[] {
   const saved = readSettings(db, [PACKAGES_KEY]).get(PACKAGES_KEY)
   const ids: string[] = saved ? JSON.parse(saved) : []
-  if (ids.length === 0) return []
-  const current = new Set(
-    db
-      .select({ id: membershipTypes.id })
-      .from(membershipTypes)
-      .where(and(inArray(membershipTypes.id, ids), eq(membershipTypes.archived, false)))
-      .all()
-      .map((t) => t.id)
-  )
+  const current = new Set(currentPlans(db, ids).map((t) => t.id))
   return ids.filter((id) => current.has(id))
 }
 
@@ -64,16 +66,14 @@ export function popularPackageIds(db: Db): string[] {
     .map((r) => r.id)
 }
 
-/** What {packages} lists: the chosen plans, or the most popular ones. */
-export function reminderPackages(db: Db): PackagePrice[] {
+/**
+ * What {packages} lists: the plans picked when sending, or else the ones
+ * ticked by default (chosen in Settings, or the most popular).
+ */
+export function reminderPackages(db: Db, picked?: string[]): PackagePrice[] {
   const chosen = chosenPackageIds(db)
-  const ids = chosen.length > 0 ? chosen : popularPackageIds(db)
-  if (ids.length === 0) return []
-  return db
-    .select({ name: membershipTypes.name, price: membershipTypes.price })
-    .from(membershipTypes)
-    .where(inArray(membershipTypes.id, ids))
-    .all()
+  const ids = picked ?? (chosen.length > 0 ? chosen : popularPackageIds(db))
+  return currentPlans(db, ids).map(({ name, price }) => ({ name, price }))
 }
 
 export function reminderSettings(db: Db): Omit<ReminderSettings, 'whatsappDesktop'> {
@@ -123,7 +123,7 @@ export function prepareReminder(db: Db, raw: ReminderInput): PreparedReminder {
     plan: registration.membershipTypeName,
     endDate: registration.endDate,
     balance: registration.balance,
-    packages: reminderPackages(db)
+    packages: reminderPackages(db, input.packageIds)
   })
   return {
     registrationId: registration.id,

@@ -1,48 +1,21 @@
 // The door page talks to the desk PC that served it, with the token it got when paired.
 import type { CheckInCandidate } from '@shared/api'
 import type { VisitStatus } from '@shared/enums'
+import { lanClient } from '../lan/client'
 
-const TOKEN_KEY = 'lifestyle.door.token'
+export { LanError as DoorError } from '../lan/client'
 
-export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
-export const forgetToken = (): void => localStorage.removeItem(TOKEN_KEY)
+const client = lanClient('lifestyle.door.token', {
+  offline: 'Check-in isn’t available right now. Please see the front desk.',
+  unpaired: 'This tablet isn’t paired.',
+  failure: 'Something went wrong. Please see the front desk.'
+})
 
-/** Why a request failed: not paired, the PC can't be reached, or a message to show. */
-export class DoorError extends Error {
-  constructor(
-    readonly kind: 'unpaired' | 'offline' | 'message',
-    message: string
-  ) {
-    super(message)
-  }
-}
+export const { getToken, forgetToken, pair } = client
 
-async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(path, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken() ?? ''}` },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(8000)
-    })
-  } catch {
-    throw new DoorError('offline', 'Check-in isn’t available right now. Please see the front desk.')
-  }
-  const data = await res.json().catch(() => ({}))
-  if (res.status === 401) throw new DoorError('unpaired', data.error ?? 'This tablet isn’t paired.')
-  if (!res.ok) throw new DoorError('message', data.error ?? 'Something went wrong. Please see the front desk.')
-  return data as T
-}
+export const ping = () => client.call<{ gymName: string }>('GET', '/api/ping')
 
-export async function pair(code: string): Promise<void> {
-  const { token } = await call<{ token: string }>('POST', '/api/pair', { code })
-  localStorage.setItem(TOKEN_KEY, token)
-}
-
-export const ping = () => call<{ gymName: string }>('GET', '/api/ping')
-
-export const find = (mobile: string) => call<{ people: CheckInCandidate[] }>('POST', '/api/find', { mobile })
+export const find = (mobile: string) => client.call<{ people: CheckInCandidate[] }>('POST', '/api/find', { mobile })
 
 export interface DoorCheckIn {
   firstName: string
@@ -51,4 +24,4 @@ export interface DoorCheckIn {
   repeat: boolean
 }
 
-export const checkIn = (memberId: string) => call<DoorCheckIn>('POST', '/api/check-in', { memberId })
+export const checkIn = (memberId: string) => client.call<DoorCheckIn>('POST', '/api/check-in', { memberId })

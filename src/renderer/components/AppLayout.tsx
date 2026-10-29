@@ -27,6 +27,7 @@ import { BackupBanner } from './BackupBanner'
 import { showCheckInAlert } from './checkIns'
 import { useMemberDrawer } from './MemberDrawer'
 import { MemberSearch } from './MemberSearch'
+import { showStoreNotice } from './storeNotices'
 import { UpdateButton } from './Updates'
 
 const NAV = [
@@ -84,6 +85,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
         showCheckInAlert(result, openMember)
       }),
     [queryClient, openMember]
+  )
+
+  // Sales and stock changes on instructors' phones: fresh lists, and a short notice.
+  useEffect(
+    () =>
+      window.events.onStoreChange((change) => {
+        void queryClient.invalidateQueries()
+        showStoreNotice(change)
+      }),
+    [queryClient]
   )
 
   const signOut = async () => {

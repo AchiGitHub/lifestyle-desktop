@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
-import type { DuplicateGroup, Member, MemberDetail, MemberListItem } from '../../shared/api'
+import type { DuplicateGroup, Member, MemberChoice, MemberDetail, MemberListItem } from '../../shared/api'
 import { memberInput, type MemberInput } from '../../shared/schemas'
 import type { Db, Executor } from '../db/client'
 import { addDays, todayIso } from '../../shared/dates'
-import { members, registrationMembers, visits } from '../db/schema'
+import { members, payments, registrationMembers, visits } from '../db/schema'
 import { AppError, nowUtc, plural } from './errors'
 import { paymentsForMember } from './payments'
 import { registrationsForMember } from './registrations'
@@ -108,6 +108,60 @@ export function findByMobile(db: Db, mobile: string): Member[] {
     .from(members)
     .all()
     .filter((m) => phoneKey(m.mobileNumber) === key)
+}
+
+const MAX_CHOICES = 20
+
+type ChoiceRow = Pick<Member, 'id' | 'firstName' | 'lastName' | 'mobileNumber'>
+
+const choice = (m: ChoiceRow): MemberChoice => {
+  const digits = (m.mobileNumber ?? '').replace(/\D/g, '')
+  return { id: m.id, name: fullName(m), phoneEnding: digits.length >= 3 ? digits.slice(-3) : null }
+}
+
+/**
+ * Members matching a name or part of a phone number, for choosing who bought
+ * something on an instructor's phone. Needs 2 letters or 3 digits, and gives
+ * at most 20, so it can't be used to list everyone.
+ */
+export function memberChoices(db: Db, query: string): MemberChoice[] {
+  const q = query.trim().toLowerCase()
+  const digits = q.replace(/\D/g, '').replace(/^0/, '')
+  const words = q.replace(/[\d+()-]/g, ' ').split(/\s+/).filter(Boolean)
+  const byPhone = digits.length >= 3
+  if (!byPhone && words.join('').length < 2) return []
+  const rows = db
+    .select({
+      id: members.id,
+      firstName: members.firstName,
+      lastName: members.lastName,
+      mobileNumber: members.mobileNumber,
+      secondaryNumber: members.secondaryNumber
+    })
+    .from(members)
+    .orderBy(asc(sql`${members.firstName} collate nocase`), asc(sql`${members.lastName} collate nocase`))
+    .all()
+  const found: MemberChoice[] = []
+  for (const m of rows) {
+    const name = fullName(m).toLowerCase()
+    const phones = `${m.mobileNumber ?? ''} ${m.secondaryNumber ?? ''}`.replace(/\D/g, '')
+    if (words.every((w) => name.includes(w)) && (!byPhone || phones.includes(digits))) found.push(choice(m))
+    if (found.length >= MAX_CHOICES) break
+  }
+  return found
+}
+
+/** Members who checked in today, latest first: the likeliest buyers. */
+export function checkedInToday(db: Db): MemberChoice[] {
+  return db
+    .all<ChoiceRow>(sql`
+      select m.id, m.first_name as firstName, m.last_name as lastName, m.mobile_number as mobileNumber
+      from visits v join members m on m.id = v.member_id
+      where substr(v.checked_in_at, 1, 10) = ${todayIso()}
+      group by m.id
+      order by max(v.checked_in_at) desc
+      limit ${MAX_CHOICES}`)
+    .map(choice)
 }
 
 const TITLES = new Set(['mr', 'mrs', 'ms', 'miss', 'dr', 'rev', 'prof'])
@@ -220,7 +274,7 @@ const FILLABLE = [
 /**
  * Moves every registration of the duplicates onto the member being kept,
  * copies details the kept member is missing, then deletes the duplicates.
- * Payments hang off registrations, so they follow automatically.
+ * Membership payments hang off registrations, so they follow automatically.
  */
 export function mergeMembers(db: Db, keepId: string, mergeIds: string[]): void {
   const others = mergeIds.filter((id) => id !== keepId)
@@ -247,8 +301,9 @@ export function mergeMembers(db: Db, keepId: string, mergeIds: string[]): void {
         .set({ memberId: keepId })
         .where(eq(registrationMembers.memberId, otherId))
         .run()
-      // Visits would otherwise be deleted along with the duplicate.
+      // Visits would otherwise be deleted along with the duplicate, and store purchases lose their buyer.
       tx.update(visits).set({ memberId: keepId }).where(eq(visits.memberId, otherId)).run()
+      tx.update(payments).set({ memberId: keepId }).where(eq(payments.memberId, otherId)).run()
       tx.delete(members).where(eq(members.id, otherId)).run()
     }
     tx.update(members)

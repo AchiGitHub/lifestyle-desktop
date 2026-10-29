@@ -163,7 +163,7 @@ function PlanStep({ form, types }: { form: Form; types: MembershipType[] }) {
           valueFormat="D MMM YYYY"
           withAsterisk
           leftSection={<IconCalendar size={16} />}
-          description={type ? `Start + ${durationLabel(type.duration, type.durationType)}` : undefined}
+          description={type ? `Start + ${durationLabel(type.duration, type.durationType)}, less a day` : undefined}
           inputWrapperOrder={['label', 'input', 'description', 'error']}
           minDate={String(form.values.startDate || '') || undefined}
           {...form.getInputProps('endDate')}

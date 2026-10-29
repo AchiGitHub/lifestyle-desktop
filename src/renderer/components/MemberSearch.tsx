@@ -7,19 +7,9 @@ import { useMemberDrawer } from './MemberDrawer'
 
 const digits = (s: string): string => s.replace(/\D/g, '')
 
-/** Find a member by name, phone or NIC; opens their details unless `onPick` says otherwise. */
-export function MemberSearch({
-  placeholder = 'Find a member by name, phone or NIC',
-  width = 420,
-  onPick
-}: {
-  placeholder?: string
-  width?: number
-  onPick?: (memberId: string) => void
-}) {
+/** Every member as a Select option, and a filter that matches name, NIC or part of a phone number. */
+export function useMemberOptions(): { options: ComboboxItem[]; filter: OptionsFilter } {
   const { data: members = [] } = useMembers()
-  const { openMember } = useMemberDrawer()
-  const [value, setValue] = useState<string | null>(null)
 
   const { options, haystack } = useMemo(() => {
     const haystack = new Map<string, { text: string; phone: string }>()
@@ -49,6 +39,23 @@ export function MemberSearch({
     }
     return out
   }
+
+  return { options, filter }
+}
+
+/** Find a member by name, phone or NIC; opens their details unless `onPick` says otherwise. */
+export function MemberSearch({
+  placeholder = 'Find a member by name, phone or NIC',
+  width = 420,
+  onPick
+}: {
+  placeholder?: string
+  width?: number
+  onPick?: (memberId: string) => void
+}) {
+  const { options, filter } = useMemberOptions()
+  const { openMember } = useMemberDrawer()
+  const [value, setValue] = useState<string | null>(null)
 
   return (
     <Select
