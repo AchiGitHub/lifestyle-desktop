@@ -12,8 +12,10 @@ import {
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
 import { members, payments, products } from '../db/schema'
+import { owedAfterPayment } from './credit'
 import { AppError } from './errors'
 import { getRegistration } from './registrations'
+import { getPtRegistration } from './training'
 import { putSetting, readSettings } from './settings'
 
 const DEFAULTS: ReceiptSettings = {
@@ -92,10 +94,43 @@ export function getReceipt(db: Db, paymentId: string): Receipt {
     }
   }
 
+  if (payment.ptRegistrationId) {
+    const pt = getPtRegistration(db, payment.ptRegistrationId)
+    // As it stood right after this payment, like a membership receipt.
+    const paid =
+      payment.receiptNo === null
+        ? pt.paid
+        : Number(
+            db
+              .select({ total: sum(payments.amount) })
+              .from(payments)
+              .where(
+                and(
+                  eq(payments.ptRegistrationId, pt.id),
+                  isNotNull(payments.receiptNo),
+                  lte(payments.receiptNo, payment.receiptNo)
+                )
+              )
+              .get()?.total ?? 0
+          )
+    const member = db
+      .select({ id: members.id, firstName: members.firstName, lastName: members.lastName, mobileNumber: members.mobileNumber })
+      .from(members)
+      .where(eq(members.id, pt.memberId))
+      .get()
+    return {
+      ...base,
+      members: member ? [member] : [],
+      item: `Personal training: ${pt.packageName}`,
+      detail: `${pt.sessions} sessions with ${pt.trainerName} · ${longDate(pt.startDate)} – ${longDate(pt.endDate)}`,
+      registration: { total: pt.amount, joiningFee: 0, paid, balance: Math.max(0, pt.amount - paid) }
+    }
+  }
+
   const product = payment.productId
     ? db.select({ name: products.name }).from(products).where(eq(products.id, payment.productId)).get()
     : undefined
-  // A store sale names its buyer, so the receipt can go to their WhatsApp.
+  // A store sale or credit payment names the member, so the receipt can go to their WhatsApp.
   const buyer = payment.memberId
     ? db
         .select({
@@ -108,6 +143,19 @@ export function getReceipt(db: Db, paymentId: string): Receipt {
         .where(eq(members.id, payment.memberId))
         .get()
     : undefined
+  if (payment.category === 'STORE_CREDIT') {
+    const owed =
+      payment.memberId && payment.paidAt && payment.receiptNo !== null
+        ? owedAfterPayment(db, { memberId: payment.memberId, paidAt: payment.paidAt, receiptNo: payment.receiptNo })
+        : null
+    return {
+      ...base,
+      members: buyer ? [buyer] : [],
+      item: 'Store items on credit',
+      detail: owed === null ? null : owed > 0 ? `${rupees(owed)} still to pay after this` : 'All paid off with this payment',
+      registration: null
+    }
+  }
   return {
     ...base,
     members: buyer ? [buyer] : [],

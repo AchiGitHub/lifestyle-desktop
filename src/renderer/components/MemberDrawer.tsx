@@ -31,11 +31,13 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Member, Registration } from '@shared/api'
+import type { Member, MemberCredit, Registration } from '@shared/api'
 import { GENDER_LABELS, PAYMENT_CATEGORY_LABELS, PAYMENT_TYPE_LABELS } from '@shared/enums'
 import { api, useAction } from '../lib/api'
 import { formatDate, formatDateTime, fromNow, fullName, lkr, oneDecimal } from '../lib/format'
 import { useDeskCheckIn } from './checkIns'
+import { CreditItems, CreditPaymentModal, CreditReminderButton } from './credit'
+import { PtActions, PtSellModal, PtStateBadge } from './training'
 import { MemberFormModal } from './MemberFormModal'
 import { useReceipt } from './ReceiptDialog'
 import { AddPaymentModal, EditRegistrationModal } from './RegistrationModals'
@@ -174,6 +176,8 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
   const { data, isPending, error } = useQuery({ queryKey: ['member', id], queryFn: () => api.members.get(id) })
   const [editing, setEditing] = useState(false)
   const [paying, setPaying] = useState<Registration | null>(null)
+  const [payingCredit, setPayingCredit] = useState<MemberCredit | null>(null)
+  const [sellingPt, setSellingPt] = useState(false)
   const [editingReg, setEditingReg] = useState<Registration | null>(null)
   const deletePayment = useAction((pid: string) => api.payments.delete(pid), { success: 'Payment deleted' })
   const { showReceipt } = useReceipt()
@@ -188,7 +192,7 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
   }
   if (error) return <Text c="red">{error.message}</Text>
 
-  const { member, registrations, payments } = data
+  const { member, registrations, payments, credit, personalTraining } = data
   const latest = registrations.reduce<Registration | null>((a, r) => (!a || r.endDate > a.endDate ? r : a), null)
   const owed = registrations.reduce((sum, r) => sum + r.balance, 0)
 
@@ -202,6 +206,11 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
             {owed > 0 && (
               <Badge color="red" variant="filled">
                 Owes {lkr(owed)}
+              </Badge>
+            )}
+            {credit.owed > 0 && (
+              <Badge color="orange" variant="filled">
+                Store credit {lkr(credit.owed)}
               </Badge>
             )}
           </Group>
@@ -245,6 +254,26 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
       </SimpleGrid>
       <Detail label="Address" value={member.address} />
 
+      {credit.owed > 0 && (
+        <>
+          <Divider label="Store items on credit" labelPosition="left" />
+          <Paper p="sm">
+            <Group justify="space-between" mb="xs">
+              <Text fw={600} c="red.7">
+                Owes {lkr(credit.owed)}
+              </Text>
+              <Group gap="xs">
+                <CreditReminderButton credit={credit} />
+                <Button size="xs" onClick={() => setPayingCredit(credit)}>
+                  Take payment
+                </Button>
+              </Group>
+            </Group>
+            <CreditItems items={credit.items} />
+          </Paper>
+        </>
+      )}
+
       <Divider label={`Registrations (${registrations.length})`} labelPosition="left" />
       <Stack gap="xs">
         {registrations.length === 0 && (
@@ -262,6 +291,53 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
           />
         ))}
       </Stack>
+
+      <Divider
+        label={
+          <Group gap="xs">
+            <span>Personal training ({personalTraining.length})</span>
+            <Button size="compact-xs" variant="subtle" leftSection={<IconPlus size={12} />} onClick={() => setSellingPt(true)}>
+              New package
+            </Button>
+          </Group>
+        }
+        labelPosition="left"
+      />
+      {personalTraining.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No personal training.
+        </Text>
+      ) : (
+        <Stack gap="xs">
+          {personalTraining.map((pt) => (
+            <Paper key={pt.id} p="sm">
+              <Group justify="space-between" wrap="nowrap" align="flex-start">
+                <Stack gap={2}>
+                  <Group gap="xs">
+                    <Text fw={600}>
+                      {pt.packageName} with {pt.trainerName}
+                    </Text>
+                    <PtStateBadge pt={pt} />
+                  </Group>
+                  <Text size="sm" c="dimmed">
+                    {pt.left} of {pt.sessions} sessions left · use by {formatDate(pt.endDate)}
+                  </Text>
+                  <Text size="sm">
+                    {lkr(pt.amount)} · paid {lkr(pt.paid)}
+                    {pt.balance > 0 && (
+                      <Text span c="red" fw={600}>
+                        {' '}
+                        · owes {lkr(pt.balance)}
+                      </Text>
+                    )}
+                  </Text>
+                </Stack>
+                <PtActions pt={pt} />
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      )}
 
       <Divider label={`Payments (${payments.length})`} labelPosition="left" />
       {payments.length === 0 ? (
@@ -319,6 +395,8 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
         onOpenExisting={(m: Member) => onOpenMember(m.id)}
       />
       <AddPaymentModal registration={paying} onClose={() => setPaying(null)} />
+      <CreditPaymentModal credit={payingCredit} onClose={() => setPayingCredit(null)} />
+      <PtSellModal start={sellingPt ? { memberId: member.id } : null} onClose={() => setSellingPt(false)} />
       <EditRegistrationModal registration={editingReg} onClose={() => setEditingReg(null)} />
     </Stack>
   )

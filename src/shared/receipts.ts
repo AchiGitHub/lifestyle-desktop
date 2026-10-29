@@ -29,7 +29,12 @@ export function daySummaryText(day: DaySummary, gymName: string): string {
     lines.push(`${PAYMENT_TYPE_LABELS[t]}: ${rupees(day.byMethod[t].total)} (${day.byMethod[t].count})`)
   }
   lines.push(`*Total: ${rupees(day.total)}*`)
-  if (day.store > 0) lines.push(`Memberships ${rupees(day.memberships)} · store ${rupees(day.store)}`)
+  if (day.store > 0 || day.personalTraining > 0) {
+    const parts = [`Memberships ${rupees(day.memberships)}`]
+    if (day.personalTraining > 0) parts.push(`personal training ${rupees(day.personalTraining)}`)
+    if (day.store > 0) parts.push(`store ${rupees(day.store)}`)
+    lines.push(parts.join(' · '))
+  }
   lines.push('', `New sign-ups: ${day.newSignUps} · renewals: ${day.renewals}`, `Check-ins: ${day.checkIns}`)
   return lines.join('\n')
 }

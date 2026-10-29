@@ -1,7 +1,7 @@
 // The door tablet's check-in page and its tiny JSON API, on the gym's local
 // network. Plain Node (no Electron) so it can be tested directly.
 import type { Server } from 'node:http'
-import type { CheckInCandidate, CheckInResult } from '../../shared/api'
+import type { CheckInCandidate, CheckInOption, CheckInResult } from '../../shared/api'
 import { createLanServer, text } from '../lan/http'
 
 export interface DoorServerOptions {
@@ -13,12 +13,18 @@ export interface DoorServerOptions {
   pair(code: string): string | null
   gymName(): string
   find(mobile: string): CheckInCandidate[]
-  checkIn(memberId: string): CheckInResult
+  /** Personal training they could check in for, if any. */
+  options(memberId: string): CheckInOption[]
+  /** With a package, a personal training session. */
+  checkIn(memberId: string, ptRegistrationId: string | null): CheckInResult
   now?: () => number
 }
 
-/** Requests per minute, per tablet. */
-const LIMITS = { find: 20, checkIn: 10 } as const
+/** Requests per minute, per tablet. A check-in with a choice takes two. */
+const LIMITS = { find: 20, checkIn: 20 } as const
+
+/** "Kasun Perera" → "Kasun": the door shows first names only. */
+const firstName = (name: string): string => name.trim().split(/\s+/)[0]
 
 export function createDoorServer(o: DoorServerOptions): Server {
   return createLanServer({
@@ -38,11 +44,30 @@ export function createDoorServer(o: DoorServerOptions): Server {
         r.limit(`find:${r.device()}`, LIMITS.find)
         return { people: o.find(text(await r.json(), 'mobile')) }
       },
+      // Someone with personal training first chooses what they're here for:
+      // without `purpose`, they get the choice and nothing is recorded yet.
       'POST /api/check-in': async (r) => {
         r.limit(`checkIn:${r.device()}`, LIMITS.checkIn)
-        const result = o.checkIn(text(await r.json(), 'memberId'))
+        const body = await r.json()
+        const memberId = text(body, 'memberId')
+        const purpose = body.purpose === undefined ? null : text(body, 'purpose')
+        if (purpose === null) {
+          const options = o.options(memberId)
+          if (options.length > 0) {
+            return {
+              choose: options.map((p) => ({ id: p.ptRegistrationId, trainer: firstName(p.trainerName), sessionsLeft: p.sessionsLeft }))
+            }
+          }
+        }
+        const result = o.checkIn(memberId, purpose === null || purpose === 'GYM' ? null : purpose)
         // Only what the door shows: no surname, phone or money.
-        return { firstName: result.firstName, status: result.status, endDate: result.endDate, repeat: result.repeat }
+        return {
+          firstName: result.firstName,
+          status: result.status,
+          endDate: result.endDate,
+          repeat: result.repeat,
+          session: result.session && { trainer: firstName(result.session.trainerName), sessionsLeft: result.session.sessionsLeft }
+        }
       }
     }
   })

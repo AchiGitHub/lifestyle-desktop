@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Db } from '../src/main/db/client'
 import { products } from '../src/main/db/schema'
 import { createPairing, type PairedDevice, type Pairing } from '../src/main/lan/pairing'
+import { owedList } from '../src/main/services/credit'
 import { listPayments } from '../src/main/services/payments'
 import { listStockChanges } from '../src/main/services/products'
 import { createStaffServer } from '../src/main/staff/server'
@@ -149,6 +150,29 @@ describe('instructor phone server', () => {
     )
     expect(sale.memberName).toBe('Nimal Perera')
     expect(changes.at(-1)).toMatchObject({ kind: 'SALE', memberName: 'Nimal Perera' })
+  })
+
+  it('sells on credit to a member only, and can undo it', async () => {
+    const token = await phone('Kasun')
+    const nimal = seedMember(db, { firstName: 'Nimal', lastName: 'Perera' })
+    const walkIn = await post('/api/sell', { productId: product, quantity: 1, paymentType: 'CREDIT' }, token)
+    expect(walkIn.status).toBe(400)
+    expect(await walkIn.json()).toEqual({ error: 'Choose who’s buying: only members can pay later.' })
+
+    const { sale } = await json<{ sale: StaffSale }>(
+      post('/api/sell', { productId: product, quantity: 2, paymentType: 'CREDIT', memberId: nimal }, token)
+    )
+    expect(sale).toMatchObject({ paymentType: 'CREDIT', amount: 700, memberName: 'Nimal Perera' })
+    expect(changes.at(-1)).toMatchObject({ kind: 'SALE', paymentType: 'CREDIT', memberName: 'Nimal Perera' })
+    expect(stockNow()).toBe(98)
+    // Not money taken, but on the phone's list for today.
+    expect(listPayments(db, { from: todayIso(), to: todayIso() })).toEqual([])
+    expect((await json<{ sales: StaffSale[] }>(get('/api/today', token))).sales.map((s) => s.id)).toEqual([sale.id])
+    expect(owedList(db).map((c) => c.owed)).toEqual([700])
+
+    expect((await post('/api/undo', { paymentId: sale.id }, token)).status).toBe(200)
+    expect(stockNow()).toBe(100)
+    expect(owedList(db)).toEqual([])
   })
 
   it('adds deliveries and counts, recorded under the instructor', async () => {

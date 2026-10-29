@@ -50,8 +50,18 @@ Double-click **Lifestyle** on the desktop and type the password. Always use the 
 | Win back people who stopped coming | **Not renewed**: press **WhatsApp**, tick the packages to offer, then **Open WhatsApp** (or call). Then **Renew** or **Dismiss** |
 | Take money from someone who owes | Click their name → **…** on the registration → **Add payment** |
 | Remind someone who owes | Click their name → **…** on the registration → **WhatsApp payment reminder** |
-| Change the WhatsApp wording, or which packages are ticked to start with | **Settings** → **WhatsApp reminders** → **Save messages** |
+| Change the WhatsApp wording (renewals, balances, store credit), or which packages are ticked to start with | **Settings** → **WhatsApp reminders** → **Save messages** |
+| Set up personal trainers | **Settings** → **Personal trainers** → **Add trainer**. Tick **This is the owner** for yourself (no commission); give each other trainer their commission % |
+| Set up the personal training packages you sell | **Personal training** → **Session types** → **Add session type**: name, sessions, price, and how long they have to use them |
+| Sell personal training | **Personal training** → **New package** (or **New package** in the member's details). Choose the member (they need a current membership), trainer and session type; the sessions, price, use-by date and commission fill in and can be changed. Enter what they paid now; the receipt opens |
+| Personal training at check-in | Members with sessions left choose **Gym workout** or **Personal training with …** on the door tablet; personal training uses a session, and a notice pops up here. At the desk, **Check in** asks the same. Removing a check-in gives the session back |
+| See trainers' commission | **Personal training** → **Commission**: each trainer's packages starting that month, what the member has paid, and the commission. **Sessions** shows who trained whom |
+| Give someone longer to use their sessions | **Personal training** → **…** on their package → **Edit** → move **Use by** on |
 | Sell a drink or supplement | **Store** → **Sell**. Choose the member under **Bought by** (leave it empty for a walk-in); it then shows in their details |
+| Let a member pay later | When selling, choose **On credit** and the member (walk-ins can't). Nothing is paid yet, so it isn't in the takings until they pay |
+| See who owes for store items, and remind them | **On credit**: everyone who owes, how much and for what. **WhatsApp** opens a reminder listing the items. The member's details show it too |
+| Take money for store items on credit | **On credit** → **Take payment** (or **Take payment** in the member's details). Any amount up to what they owe; it pays off the oldest items first, and the receipt shows what's left |
+| Fix a credit sale entered by mistake | **On credit** → **Credit sales** → bin icon. It comes off what they owe and the items go back into stock |
 | Record a delivery, or correct stock after counting the shelf | **Store** → **Stock** on the product → **Stock arrived** or **Counted the shelf**. **Store → Stock changes** lists every change and who made it |
 | Let an instructor sell or update stock on their phone | **Settings** → **Instructor phones** → **Pair a phone**, type their name, then they scan the code with their phone on the gym Wi-Fi. Their sales show under **Store → Sales** with their name, and a notice pops up here as they happen |
 | Stop a phone (lost, or the instructor left) | **Settings** → **Instructor phones** → bin icon next to their name. Their past sales keep their name |

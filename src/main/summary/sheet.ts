@@ -26,6 +26,7 @@ const HEADER = [
   'Card',
   'Bank transfer',
   'Memberships',
+  'Personal training',
   'Store',
   'New sign-ups',
   'Renewals',
@@ -49,6 +50,7 @@ function row(label: string, d: Omit<DaySummary, 'date' | 'count'>): string[] {
     amount(d.byMethod.CARD.total),
     amount(d.byMethod.ONLINE.total),
     amount(d.memberships),
+    amount(d.personalTraining),
     amount(d.store),
     number(d.newSignUps),
     number(d.renewals),
@@ -66,6 +68,7 @@ function addUp(days: DaySummary[]): Omit<DaySummary, 'date' | 'count'> {
       ONLINE: { count: sum((d) => d.byMethod.ONLINE.count), total: sum((d) => d.byMethod.ONLINE.total) }
     },
     memberships: sum((d) => d.memberships),
+    personalTraining: sum((d) => d.personalTraining),
     store: sum((d) => d.store),
     newSignUps: sum((d) => d.newSignUps),
     renewals: sum((d) => d.renewals),

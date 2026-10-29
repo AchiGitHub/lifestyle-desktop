@@ -1,5 +1,5 @@
 import type { ReminderKind } from './enums'
-import { longDate, rupees } from './format'
+import { longDate, rupees, shortDate } from './format'
 
 export const DEFAULT_TEMPLATES: Record<ReminderKind, string> = {
   EXPIRING:
@@ -7,15 +7,39 @@ export const DEFAULT_TEMPLATES: Record<ReminderKind, string> = {
   EXPIRED:
     'Hi {name}, this is Lifestyle Fitness Studio. Your {plan} membership ended on {endDate}. We miss you! Renew at the front desk any time and get back to training.\n\nOur popular packages:\n{packages}',
   BALANCE:
-    'Hi {name}, this is Lifestyle Fitness Studio. {balance} is still due on your {plan} membership. Please settle it at the front desk on your next visit. Thank you!'
+    'Hi {name}, this is Lifestyle Fitness Studio. {balance} is still due on your {plan} membership. Please settle it at the front desk on your next visit. Thank you!',
+  CREDIT:
+    'Hi {name}, this is Lifestyle Fitness Studio. You have {balance} to pay for items from our store:\n{items}\n\nPlease settle it at the front desk on your next visit. Thank you!'
 }
 
-export const PLACEHOLDERS = ['name', 'plan', 'endDate', 'balance', 'packages'] as const
+export const PLACEHOLDERS = ['name', 'plan', 'endDate', 'balance', 'packages', 'items'] as const
 export type ReminderValues = Record<(typeof PLACEHOLDERS)[number], string>
 
 export interface PackagePrice {
   name: string
   price: number
+}
+
+/** An item still to pay for, as {items} lists it. */
+export interface CreditLine {
+  soldAt: string
+  productName: string
+  quantity: number
+  amount: number
+  owed: number
+}
+
+/** Enough lines to recognise what they took, without making the link too long for WhatsApp. */
+const MAX_ITEM_LINES = 10
+
+/** One line per item, oldest first: "• 12 Oct: Yeti Isotonic × 2 – Rs. 700". */
+export function creditLines(items: CreditLine[]): string {
+  const lines = items.slice(0, MAX_ITEM_LINES).map((i) => {
+    const left = i.owed < i.amount ? ` (${rupees(i.owed)} left of ${rupees(i.amount)})` : ` – ${rupees(i.amount)}`
+    return `• ${shortDate(i.soldAt)}: ${i.productName} × ${i.quantity}${left}`
+  })
+  if (items.length > MAX_ITEM_LINES) lines.push(`• and ${items.length - MAX_ITEM_LINES} more`)
+  return lines.join('\n')
 }
 
 /** One line per plan, cheapest first: "• One Month – Rs. 6,000". */
@@ -33,6 +57,7 @@ export function reminderValues(v: {
   endDate: string
   balance: number
   packages: PackagePrice[]
+  items?: CreditLine[]
 }): ReminderValues {
   const name = v.firstName.trim()
   return {
@@ -41,7 +66,8 @@ export function reminderValues(v: {
     plan: v.plan,
     endDate: longDate(v.endDate),
     balance: rupees(v.balance),
-    packages: packageLines(v.packages)
+    packages: packageLines(v.packages),
+    items: creditLines(v.items ?? [])
   }
 }
 

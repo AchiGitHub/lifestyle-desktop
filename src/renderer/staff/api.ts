@@ -1,6 +1,6 @@
 // The instructor page talks to the desk PC that served it, with the token it got when paired.
 import type { MemberChoice, StaffProduct, StaffSale, StockResult } from '@shared/api'
-import type { PaymentType } from '@shared/enums'
+import type { SaleMethod } from '@shared/enums'
 import { lanClient } from '../lan/client'
 
 export { LanError } from '../lan/client'
@@ -24,7 +24,7 @@ export const todaysSales = async (): Promise<StaffSale[]> =>
 export const sell = async (input: {
   productId: string
   quantity: number
-  paymentType: PaymentType
+  paymentType: SaleMethod
   memberId: string | null
 }): Promise<StaffSale> => (await client.call<{ sale: StaffSale }>('POST', '/api/sell', input)).sale
 
@@ -38,4 +38,5 @@ export const membersCheckedInToday = async (): Promise<MemberChoice[]> =>
 export const changeStock = (kind: 'received' | 'count', productId: string, quantity: number) =>
   client.call<StockResult>('POST', `/api/stock/${kind}`, { productId, quantity })
 
+/** Takes back a sale, paid or on credit (the server still calls its id paymentId). */
 export const undo = (paymentId: string) => client.call<{ ok: true }>('POST', '/api/undo', { paymentId })

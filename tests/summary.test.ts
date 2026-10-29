@@ -66,6 +66,7 @@ describe('day summaries', () => {
       total: 15350,
       count: 3,
       memberships: 15000,
+      personalTraining: 0,
       store: 350,
       newSignUps: 1,
       renewals: 1,
@@ -94,6 +95,7 @@ function day(date: string, cash = 0, extra: Partial<DaySummary> = {}): DaySummar
     total: cash,
     count: cash ? 1 : 0,
     memberships: cash,
+    personalTraining: 0,
     store: 0,
     newSignUps: 0,
     renewals: 0,
@@ -118,8 +120,8 @@ describe('the owner’s sheet', () => {
       'Tue 29 Sep'
     ])
     // Month total: Rs 12,000 and 30 check-ins; a quiet day shows 0 total and blanks.
-    expect(rows[2]).toEqual(['OCTOBER 2026 SO FAR', '12,000', '12,000', '', '', '12,000', '', '', '', '30'])
-    expect(rows[4]).toEqual(['Thu 1 Oct', '0', '', '', '', '', '', '', '', ''])
+    expect(rows[2]).toEqual(['OCTOBER 2026 SO FAR', '12,000', '12,000', '', '', '12,000', '', '', '', '', '30'])
+    expect(rows[4]).toEqual(['Thu 1 Oct', '0', '', '', '', '', '', '', '', '', ''])
     expect(rows[6][1]).toBe('2,000.5')
   })
 

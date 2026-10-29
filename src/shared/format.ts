@@ -13,6 +13,11 @@ export function longDate(iso: string): string {
   return `${day} ${MONTHS[month - 1]} ${year}`
 }
 
+/** "3 Nov", for dates within the last few months. */
+export function shortDate(iso: string): string {
+  return longDate(iso).replace(/ \d{4}$/, '')
+}
+
 /** "28 Oct 2026, 6:15 PM", from a local 'YYYY-MM-DDTHH:mm:ss'. */
 export function longDateTime(localIso: string): string {
   const [hours, minutes] = localIso.slice(11, 16).split(':').map(Number)

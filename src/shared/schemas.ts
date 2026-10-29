@@ -1,5 +1,13 @@
 import { z } from 'zod'
-import { DURATION_TYPES, GENDERS, PAYMENT_CATEGORIES, PAYMENT_TYPES, PRODUCT_TYPES, REMINDER_KINDS } from './enums'
+import {
+  DURATION_TYPES,
+  GENDERS,
+  PAYMENT_CATEGORIES,
+  PAYMENT_TYPES,
+  PRODUCT_TYPES,
+  REMINDER_KINDS,
+  SALE_METHODS
+} from './enums'
 import { whatsappNumber } from './reminders'
 
 // Form inputs hand over '' for empty fields; store those as null.
@@ -145,14 +153,96 @@ export const stockCountInput = z.object({
 })
 export type StockInput = z.input<typeof stockCountInput>
 
-export const sellInput = z.object({
-  productId: id('Choose a product'),
-  quantity: z.number({ error: 'Enter a quantity' }).int('Whole numbers only').min(1, 'At least 1'),
-  paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' }),
-  /** The member who bought it; none for a walk-in. */
-  memberId: z.string().min(1).nullish()
-})
+export const sellInput = z
+  .object({
+    productId: id('Choose a product'),
+    quantity: z.number({ error: 'Enter a quantity' }).int('Whole numbers only').min(1, 'At least 1'),
+    paymentType: z.enum(SALE_METHODS, { error: 'Choose how they paid' }),
+    /** The member who bought it; none for a walk-in. */
+    memberId: z.string().min(1).nullish()
+  })
+  .refine((v) => v.paymentType !== 'CREDIT' || Boolean(v.memberId), {
+    message: 'Choose who’s buying: only members can pay later.',
+    path: ['memberId']
+  })
 export type SellInput = z.input<typeof sellInput>
+
+/** Money towards a member's store credit; the oldest items are paid off first. */
+export const creditPaymentInput = z.object({
+  memberId: id('Choose a member'),
+  amount: z.number({ error: 'Enter the amount' }).positive('Must be more than 0'),
+  paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' })
+})
+export type CreditPaymentInput = z.input<typeof creditPaymentInput>
+
+export const trainerInput = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  /** The owner gets no commission. */
+  isOwner: z.boolean(),
+  commissionPercent: z
+    .number({ error: 'Enter a percentage' })
+    .min(0, "Can't be negative")
+    .max(100, 'At most 100%')
+})
+export type TrainerInput = z.input<typeof trainerInput>
+
+const ptSessions = z
+  .number({ error: 'Enter the number of sessions' })
+  .int('Whole numbers only')
+  .min(1, 'At least 1 session')
+  .max(500, 'At most 500 sessions')
+
+/** A personal training session type: so many sessions for a price, used within a time. */
+export const ptPackageInput = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  sessions: ptSessions,
+  price: money('price'),
+  validDuration: durationInput.shape.duration,
+  validDurationType: durationInput.shape.durationType
+})
+export type PtPackageInput = z.input<typeof ptPackageInput>
+
+const ptTerms = {
+  trainerId: id('Choose a trainer'),
+  sessions: ptSessions,
+  startDate: isoDate,
+  endDate: isoDate,
+  amount: money('price'),
+  /** The trainer's share, in rupees. */
+  commission: money('commission')
+}
+const endsAfterStart = (v: { startDate: string; endDate: string }) => v.endDate >= v.startDate
+const commissionWithin = (v: { amount: number; commission: number }) => v.commission <= v.amount
+const ENDS_AFTER_START = { message: 'Must be on or after the start date', path: ['endDate'] }
+const COMMISSION_WITHIN = { message: 'Can’t be more than the price', path: ['commission'] }
+
+export const ptCreateInput = z
+  .object({
+    memberId: id('Choose a member'),
+    packageId: id('Choose a session type'),
+    ...ptTerms,
+    payment: z.object({
+      amount: money('amount paid'),
+      paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' })
+    })
+  })
+  .refine(endsAfterStart, ENDS_AFTER_START)
+  .refine(commissionWithin, COMMISSION_WITHIN)
+  .refine((v) => v.payment.amount <= v.amount, { message: 'More than the price', path: ['payment', 'amount'] })
+export type PtCreateInput = z.input<typeof ptCreateInput>
+
+export const ptUpdateInput = z
+  .object(ptTerms)
+  .refine(endsAfterStart, ENDS_AFTER_START)
+  .refine(commissionWithin, COMMISSION_WITHIN)
+export type PtUpdateInput = z.input<typeof ptUpdateInput>
+
+export const ptPaymentInput = z.object({
+  ptRegistrationId: id('Choose a package'),
+  amount: z.number({ error: 'Enter the amount' }).positive('Must be more than 0'),
+  paymentType: z.enum(PAYMENT_TYPES, { error: 'Choose how they paid' })
+})
+export type PtPaymentInput = z.input<typeof ptPaymentInput>
 
 export const dateRangeInput = z
   .object({ from: isoDate, to: isoDate })
@@ -200,7 +290,8 @@ const packageIds = z.array(z.string()).max(8, 'List at most 8 packages')
 export const reminderInput = z.object({
   registrationId: id('Choose a registration'),
   memberId: id('Choose a member'),
-  kind: z.enum(REMINDER_KINDS),
+  // Store credit isn't about a registration: that's reminders.sendCredit.
+  kind: z.enum(REMINDER_KINDS).exclude(['CREDIT']),
   /** The plans {packages} lists in this message; left out, the ones ticked by default. */
   packageIds: packageIds.optional()
 })
@@ -209,7 +300,7 @@ export type ReminderInput = z.input<typeof reminderInput>
 // Kept short: the message travels inside a link, and Sinhala text takes ~9 characters per letter there.
 const template = z.string().trim().min(1, 'The message can’t be empty').max(600, 'Keep the message under 600 characters')
 export const reminderSettingsInput = z.object({
-  templates: z.object({ EXPIRING: template, EXPIRED: template, BALANCE: template }),
+  templates: z.object({ EXPIRING: template, EXPIRED: template, BALANCE: template, CREDIT: template }),
   /** Plans ticked for {packages} when a reminder is sent; empty means the most popular ones. */
   packageIds
 })

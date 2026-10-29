@@ -12,5 +12,9 @@ export const useDurations = () => useQuery({ queryKey: ['durations'], queryFn: (
 
 export const useProducts = () => useQuery({ queryKey: ['products'], queryFn: () => api.products.list() })
 
+export const useTrainers = () => useQuery({ queryKey: ['trainers'], queryFn: () => api.trainers.list() })
+
+export const usePtPackages = () => useQuery({ queryKey: ['ptPackages'], queryFn: () => api.ptPackages.list() })
+
 export const useBackupStatus = () =>
   useQuery({ queryKey: ['backupStatus'], queryFn: () => api.backup.status(), refetchInterval: 60_000 })

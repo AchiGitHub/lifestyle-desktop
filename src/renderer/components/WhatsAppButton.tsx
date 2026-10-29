@@ -37,9 +37,11 @@ export function whatsappRecipients(members: RegistrationMember[]): RegistrationM
   })
 }
 
+type RegistrationReminderKind = Exclude<ReminderKind, 'CREDIT'>
+
 export function useSendReminder() {
   return useAction(
-    (registrationId: string, memberId: string, kind: ReminderKind, packageIds?: string[]) =>
+    (registrationId: string, memberId: string, kind: RegistrationReminderKind, packageIds?: string[]) =>
       api.reminders.send({ registrationId, memberId, kind, packageIds }),
     { success: 'Opening WhatsApp. Check the message, then press send.' }
   )
@@ -53,7 +55,7 @@ function ReminderDialog({
   onClose
 }: {
   registration: Registration
-  kind: ReminderKind
+  kind: RegistrationReminderKind
   recipients: RegistrationMember[]
   onClose: () => void
 }) {
@@ -195,7 +197,7 @@ function ReminderDialog({
 /** Renewal reminder for the Renewals due and Not renewed lists. */
 export function WhatsAppButton({ registration: r }: { registration: Registration }) {
   const [open, setOpen] = useState(false)
-  const kind: ReminderKind = r.endDate < todayIso() ? 'EXPIRED' : 'EXPIRING'
+  const kind: RegistrationReminderKind = r.endDate < todayIso() ? 'EXPIRED' : 'EXPIRING'
   const recipients = whatsappRecipients(r.members)
   const messaged = r.remindedAt !== null
   const lastSent = messaged ? `Messaged ${fromNow(r.remindedAt!)} (${formatDateTime(r.remindedAt)})` : null

@@ -4,10 +4,21 @@ import type { DuplicateGroup, Member, MemberChoice, MemberDetail, MemberListItem
 import { memberInput, type MemberInput } from '../../shared/schemas'
 import type { Db, Executor } from '../db/client'
 import { addDays, todayIso } from '../../shared/dates'
-import { members, payments, registrationMembers, visits } from '../db/schema'
+import { rupees } from '../../shared/format'
+import {
+  creditReminders,
+  creditSales,
+  members,
+  payments,
+  ptRegistrations,
+  registrationMembers,
+  visits
+} from '../db/schema'
+import { memberCredit, owedBy } from './credit'
 import { AppError, nowUtc, plural } from './errors'
 import { paymentsForMember } from './payments'
 import { registrationsForMember } from './registrations'
+import { ptForMember } from './training'
 
 const fullName = (m: Pick<Member, 'firstName' | 'lastName'>): string => `${m.firstName} ${m.lastName}`.trim()
 
@@ -54,7 +65,9 @@ export function getMember(db: Db, id: string): MemberDetail {
     member: findMember(db, id),
     registrations: registrationsForMember(db, id),
     payments: paymentsForMember(db, id),
-    visits: { lastAt: visitStats?.lastAt ?? null, last30Days: visitStats?.last30Days ?? 0 }
+    visits: { lastAt: visitStats?.lastAt ?? null, last30Days: visitStats?.last30Days ?? 0 },
+    credit: memberCredit(db, id),
+    personalTraining: ptForMember(db, id)
   }
 }
 
@@ -96,6 +109,23 @@ export function deleteMembers(db: Db, ids: string[]): void {
         ? `${who} is on ${plural(first.n, 'registration')}, so they can't be deleted. If they're a duplicate, merge them instead.`
         : `${plural(inUse.length, 'member')} are on registrations and can't be deleted. If they're duplicates, merge them instead.`
     )
+  }
+  const training = db
+    .select({ id: ptRegistrations.memberId })
+    .from(ptRegistrations)
+    .where(inArray(ptRegistrations.memberId, ids))
+    .get()
+  if (training) {
+    throw new AppError(
+      `${fullName(findMember(db, training.id))} has personal training packages, so they can't be deleted. If they're a duplicate, merge them instead.`
+    )
+  }
+  // Their store credit would go with them.
+  for (const id of ids) {
+    const owed = owedBy(db, id)
+    if (owed > 0) {
+      throw new AppError(`${fullName(findMember(db, id))} owes ${rupees(owed)} for store items, so they can't be deleted.`)
+    }
   }
   db.delete(members).where(inArray(members.id, ids)).run()
 }
@@ -301,9 +331,12 @@ export function mergeMembers(db: Db, keepId: string, mergeIds: string[]): void {
         .set({ memberId: keepId })
         .where(eq(registrationMembers.memberId, otherId))
         .run()
-      // Visits would otherwise be deleted along with the duplicate, and store purchases lose their buyer.
+      // Visits and store credit would otherwise be deleted along with the duplicate, and store purchases lose their buyer.
       tx.update(visits).set({ memberId: keepId }).where(eq(visits.memberId, otherId)).run()
       tx.update(payments).set({ memberId: keepId }).where(eq(payments.memberId, otherId)).run()
+      tx.update(creditSales).set({ memberId: keepId }).where(eq(creditSales.memberId, otherId)).run()
+      tx.update(creditReminders).set({ memberId: keepId }).where(eq(creditReminders.memberId, otherId)).run()
+      tx.update(ptRegistrations).set({ memberId: keepId }).where(eq(ptRegistrations.memberId, otherId)).run()
       tx.delete(members).where(eq(members.id, otherId)).run()
     }
     tx.update(members)

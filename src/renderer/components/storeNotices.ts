@@ -1,6 +1,6 @@
 import { notifications } from '@mantine/notifications'
 import type { StoreChange } from '@shared/api'
-import { PAYMENT_TYPE_LABELS } from '@shared/enums'
+import { SALE_METHOD_LABELS } from '@shared/enums'
 import { lkr } from '../lib/format'
 
 export function storeChangeText(c: StoreChange): string {
@@ -9,7 +9,7 @@ export function storeChangeText(c: StoreChange): string {
     case 'UNDO': {
       const to = c.memberName ? ` to ${c.memberName}` : ''
       return c.kind === 'SALE'
-        ? `${c.by} sold ${c.quantity} × ${c.productName}${to} · ${lkr(c.amount)} ${PAYMENT_TYPE_LABELS[c.paymentType].toLowerCase()}`
+        ? `${c.by} sold ${c.quantity} × ${c.productName}${to} · ${lkr(c.amount)} ${SALE_METHOD_LABELS[c.paymentType].toLowerCase()}`
         : `${c.by} undid a sale: ${c.quantity} × ${c.productName}${to} · ${lkr(c.amount)}`
     }
     case 'RECEIVED':

@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Button,
   Group,
@@ -19,14 +20,15 @@ import { modals } from '@mantine/modals'
 import { IconEdit, IconPlus, IconShoppingCartPlus, IconTrash } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Product, StockChange } from '@shared/api'
 import { monthRange, todayIso } from '@shared/dates'
 import {
   LOW_STOCK,
-  PAYMENT_TYPES,
-  PAYMENT_TYPE_LABELS,
   PRODUCT_TYPES,
   PRODUCT_TYPE_LABELS,
+  SALE_METHODS,
+  SALE_METHOD_LABELS,
   STOCK_CHANGE_KIND_LABELS,
   STORE_CATEGORIES,
   type StockChangeKind
@@ -53,13 +55,17 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
     validate: schemaResolver(sellInput, { sync: true })
   })
   const members = useMemberOptions()
-  const sell = useAction((v: SellInput) => api.products.sell(v), { success: 'Sale recorded' })
+  const credit = form.values.paymentType === 'CREDIT'
+  const sell = useAction((v: SellInput) => api.products.sell(v), {
+    success: credit ? 'Sale recorded. It’s under On credit until they pay.' : 'Sale recorded'
+  })
   const { showReceipt } = useReceipt()
   const product = products.find((p) => p.id === form.values.productId)
   const qty = Number(form.values.quantity) || 0
-  const done = (paymentId: string) => {
+  // A sale on credit has no receipt: nothing was paid. Paying it off gives one.
+  const done = (id: string) => {
     onClose()
-    showReceipt(paymentId, true)
+    if (!credit) showReceipt(id, true)
   }
 
   return (
@@ -78,7 +84,8 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
         <NumberInput label="Quantity" min={1} max={product?.quantity} allowDecimal={false} {...form.getInputProps('quantity')} />
         <Select
           label="Bought by"
-          placeholder="A walk-in, or search a member by name or phone"
+          placeholder={credit ? 'Search a member by name or phone' : 'A walk-in, or search a member by name or phone'}
+          withAsterisk={credit}
           data={members.options}
           filter={members.filter}
           limit={12}
@@ -88,7 +95,7 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
           {...form.getInputProps('memberId')}
         />
         <SegmentedControl
-          data={PAYMENT_TYPES.map((t) => ({ value: t, label: PAYMENT_TYPE_LABELS[t] }))}
+          data={SALE_METHODS.map((t) => ({ value: t, label: SALE_METHOD_LABELS[t] }))}
           {...form.getInputProps('paymentType')}
         />
         {product && (
@@ -104,6 +111,11 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
                 {lkr(product.sellingPrice * qty)}
               </Text>
             </Group>
+            {credit && (
+              <Text size="xs" c="dimmed" mt={4}>
+                Nothing is paid now. It’s added to what they owe, under On credit.
+              </Text>
+            )}
           </Paper>
         )}
         <Group justify="flex-end">
@@ -111,7 +123,7 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
             Cancel
           </Button>
           <Button type="submit" loading={sell.isPending} disabled={!product || qty > product.quantity}>
-            Record sale
+            {credit ? 'Record on credit' : 'Record sale'}
           </Button>
         </Group>
       </Stack>
@@ -287,14 +299,30 @@ function Sales() {
     queryKey: ['payments', range.from, range.to, STORE_CATEGORIES, null],
     queryFn: () => api.payments.list({ ...range, categories: STORE_CATEGORIES })
   })
+  // Items taken on credit aren't payments, so they're counted here but listed under On credit.
+  const credit = useQuery({
+    queryKey: ['credit', 'sales', range.from, range.to],
+    queryFn: () => api.credit.sales(range)
+  })
+  const onCredit = credit.data ?? []
   const total = data.reduce((s, p) => s + p.amount, 0)
   return (
     <Stack>
       <Group justify="space-between">
         <MonthPickerInput value={month} onChange={(v) => v && setMonth(v)} valueFormat="MMMM YYYY" w={200} />
-        <Text fw={600}>
-          {data.length} sales · {lkr(total)}
-        </Text>
+        <Stack gap={0} align="flex-end">
+          <Text fw={600}>
+            {data.length} sales · {lkr(total)}
+          </Text>
+          {onCredit.length > 0 && (
+            <Text size="sm" c="dimmed">
+              Also {onCredit.length} on credit ({lkr(onCredit.reduce((s, c) => s + c.amount, 0))}):{' '}
+              <Anchor component={Link} to="/credit" size="sm">
+                see On credit
+              </Anchor>
+            </Text>
+          )}
+        </Stack>
       </Group>
       <PaymentsTable records={data} fetching={isPending} showRecordedBy />
     </Stack>

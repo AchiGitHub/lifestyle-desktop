@@ -12,6 +12,7 @@ import type { LanService } from './lan/service'
 import { printHtml } from './print'
 import { receiptHtml } from './print/html'
 import * as auth from './services/auth'
+import { recordCreditReminder } from './services/credit'
 import { AppError } from './services/errors'
 import * as receipts from './services/receipts'
 import * as reminders from './services/reminders'
@@ -77,6 +78,11 @@ function api(): Api {
         const reminder = reminders.prepareReminder(db, input)
         await openChat(reminder.phone, reminder.text)
         reminders.recordReminder(db, reminder)
+      },
+      sendCredit: async (memberId) => {
+        const reminder = reminders.prepareCreditReminder(db, memberId)
+        await openChat(reminder.phone, reminder.text)
+        recordCreditReminder(db, memberId)
       }
     },
     receipts: {

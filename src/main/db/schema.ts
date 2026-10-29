@@ -94,6 +94,63 @@ export const registrationMembers = sqliteTable(
   (t) => [primaryKey({ columns: [t.registrationId, t.memberId] }), index('registration_members_member_idx').on(t.memberId)]
 )
 
+/** Personal trainers: the owner (no commission) and the trainers paid a commission on what they sell. */
+export const trainers = sqliteTable('trainers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  isOwner: integer('is_owner', { mode: 'boolean' }).notNull().default(false),
+  /** Fills in the commission on a new package; 0 for the owner. */
+  commissionPercent: real('commission_percent').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  ...timestamps()
+})
+
+/** Personal training session types: so many sessions for a price, to use within a time. */
+export const ptPackages = sqliteTable('pt_packages', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  sessions: integer('sessions').notNull(),
+  price: real('price').notNull(),
+  validDuration: integer('valid_duration').notNull(),
+  validDurationType: text('valid_duration_type', { enum: DURATION_TYPES }).notNull(),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  ...timestamps()
+})
+
+/**
+ * A member's personal training package, kept apart from membership
+ * registrations. Sessions used are the visits that point at it.
+ */
+export const ptRegistrations = sqliteTable(
+  'pt_registrations',
+  {
+    id: text('id').primaryKey(),
+    memberId: text('member_id')
+      .notNull()
+      .references(() => members.id, { onDelete: 'restrict' }),
+    trainerId: text('trainer_id')
+      .notNull()
+      .references(() => trainers.id, { onDelete: 'restrict' }),
+    packageId: text('package_id').references(() => ptPackages.id, { onDelete: 'set null' }),
+    /** Kept so the history reads the same after the session type is renamed or deleted. */
+    packageName: text('package_name').notNull(),
+    sessions: integer('sessions').notNull(),
+    startDate: text('start_date').notNull(),
+    /** Sessions left after this day can't be used. */
+    endDate: text('end_date').notNull(),
+    amount: real('amount').notNull(),
+    /** The trainer's share of the amount, in rupees; 0 for the owner. */
+    commission: real('commission').notNull().default(0),
+    ...timestamps()
+  },
+  (t) => [
+    index('pt_registrations_member_idx').on(t.memberId),
+    index('pt_registrations_trainer_idx').on(t.trainerId),
+    index('pt_registrations_start_idx').on(t.startDate),
+    index('pt_registrations_end_idx').on(t.endDate)
+  ]
+)
+
 export const products = sqliteTable('products', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -127,12 +184,15 @@ export const payments = sqliteTable(
     recordedBy: text('recorded_by'),
     /** The instructor's phone, for its own list of today's sales and Undo. */
     deviceId: text('device_id'),
+    /** A payment towards a personal training package. */
+    ptRegistrationId: text('pt_registration_id').references(() => ptRegistrations.id, { onDelete: 'restrict' }),
     ...timestamps()
   },
   (t) => [
     index('payments_paid_at_idx').on(t.paidAt),
     index('payments_registration_idx').on(t.registrationId),
     index('payments_member_idx').on(t.memberId),
+    index('payments_pt_registration_idx').on(t.ptRegistrationId),
     uniqueIndex('payments_receipt_no_idx').on(t.receiptNo)
   ]
 )
@@ -158,6 +218,44 @@ export const stockChanges = sqliteTable(
   (t) => [index('stock_changes_changed_at_idx').on(t.changedAt), index('stock_changes_product_idx').on(t.productId)]
 )
 
+/**
+ * Store items a member took to pay for later. Not income: what they pay
+ * towards them is a payment (category STORE_CREDIT), oldest items first.
+ */
+export const creditSales = sqliteTable(
+  'credit_sales',
+  {
+    id: text('id').primaryKey(),
+    memberId: text('member_id')
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    productId: text('product_id').references(() => products.id, { onDelete: 'set null' }),
+    /** Kept so reminders still say what they took after the product is deleted. */
+    productName: text('product_name').notNull(),
+    quantity: integer('quantity').notNull(),
+    amount: real('amount').notNull(),
+    /** Local time 'YYYY-MM-DDTHH:mm:ss'. */
+    soldAt: text('sold_at').notNull(),
+    /** As on payments: the instructor's name, or null at the front desk. */
+    recordedBy: text('recorded_by'),
+    deviceId: text('device_id')
+  },
+  (t) => [index('credit_sales_member_idx').on(t.memberId), index('credit_sales_sold_at_idx').on(t.soldAt)]
+)
+
+/** WhatsApp reminders about store credit (the others are per registration, in reminders). */
+export const creditReminders = sqliteTable(
+  'credit_reminders',
+  {
+    id: text('id').primaryKey(),
+    memberId: text('member_id')
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    sentAt: text('sent_at').notNull()
+  },
+  (t) => [index('credit_reminders_member_idx').on(t.memberId)]
+)
+
 /** Check-ins at the door tablet or the front desk. */
 export const visits = sqliteTable(
   'visits',
@@ -169,9 +267,15 @@ export const visits = sqliteTable(
     /** Local time 'YYYY-MM-DDTHH:mm:ss'. */
     checkedInAt: text('checked_in_at').notNull(),
     source: text('source', { enum: VISIT_SOURCES }).notNull(),
-    status: text('status', { enum: VISIT_STATUSES }).notNull()
+    status: text('status', { enum: VISIT_STATUSES }).notNull(),
+    /** A personal training session: it uses one of that package's sessions. */
+    ptRegistrationId: text('pt_registration_id').references(() => ptRegistrations.id, { onDelete: 'set null' })
   },
-  (t) => [index('visits_checked_in_idx').on(t.checkedInAt), index('visits_member_idx').on(t.memberId)]
+  (t) => [
+    index('visits_checked_in_idx').on(t.checkedInAt),
+    index('visits_member_idx').on(t.memberId),
+    index('visits_pt_registration_idx').on(t.ptRegistrationId)
+  ]
 )
 
 /** WhatsApp messages opened from the app, so staff can see who has been contacted. */

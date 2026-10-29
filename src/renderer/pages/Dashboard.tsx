@@ -221,9 +221,11 @@ function Charts({ months }: { months: MonthFigures[] }) {
           details={(m) => (
             <>
               <Text fw={700}>{lkr(m.income)}</Text>
-              {m.store > 0 && (
+              {(m.store > 0 || m.personalTraining > 0) && (
                 <Text size="xs" c="dimmed">
-                  Memberships {lkr(m.memberships)} · store {lkr(m.store)}
+                  Memberships {lkr(m.memberships)}
+                  {m.personalTraining > 0 && ` · personal training ${lkr(m.personalTraining)}`}
+                  {m.store > 0 && ` · store ${lkr(m.store)}`}
                 </Text>
               )}
             </>
@@ -309,6 +311,7 @@ function Charts({ months }: { months: MonthFigures[] }) {
 /** The same figures as the charts, as numbers. */
 function MonthsTable({ months }: { months: MonthFigures[] }) {
   const withStore = months.some((m) => m.store > 0)
+  const withTraining = months.some((m) => m.personalTraining > 0)
   return (
     <Paper p="md">
       <Table.ScrollContainer minWidth={640}>
@@ -317,6 +320,7 @@ function MonthsTable({ months }: { months: MonthFigures[] }) {
             <Table.Tr>
               <Table.Th>Month</Table.Th>
               <Table.Th ta="right">Income</Table.Th>
+              {withTraining && <Table.Th ta="right">of which personal training</Table.Th>}
               {withStore && <Table.Th ta="right">of which store</Table.Th>}
               <Table.Th ta="right">Active members</Table.Th>
               <Table.Th ta="right">New sign-ups</Table.Th>
@@ -330,6 +334,7 @@ function MonthsTable({ months }: { months: MonthFigures[] }) {
               <Table.Tr key={m.month}>
                 <Table.Td>{monthName(m)}</Table.Td>
                 <Table.Td ta="right">{lkr(m.income)}</Table.Td>
+                {withTraining && <Table.Td ta="right">{lkr(m.personalTraining)}</Table.Td>}
                 {withStore && <Table.Td ta="right">{lkr(m.store)}</Table.Td>}
                 <Table.Td ta="right">{m.activeMembers}</Table.Td>
                 <Table.Td ta="right">{m.newSignUps}</Table.Td>

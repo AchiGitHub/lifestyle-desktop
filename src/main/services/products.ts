@@ -17,7 +17,8 @@ import {
   type StockInput
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
-import { members, payments, products, stockChanges } from '../db/schema'
+import { creditSales, members, payments, products, stockChanges } from '../db/schema'
+import { deleteCreditSale } from './credit'
 import { AppError, nowUtc } from './errors'
 import { deletePayment, nextReceiptNo } from './payments'
 
@@ -78,7 +79,10 @@ export function deleteProducts(db: Db, ids: string[]): void {
   db.delete(products).where(inArray(products.id, ids)).run()
 }
 
-/** Returns the sale's payment id. */
+/**
+ * Returns the sale's payment id. A sale on credit isn't a payment (no money
+ * came in): it's kept against the member, and its id is returned instead.
+ */
 export function sellProduct(db: Db, raw: SellInput, by?: Recorder): string {
   const input = sellInput.parse(raw)
   const id = randomUUID()
@@ -103,19 +107,28 @@ export function sellProduct(db: Db, raw: SellInput, by?: Recorder): string {
       })
       .where(eq(products.id, product.id))
       .run()
+    const sale = {
+      id,
+      productId: product.id,
+      quantity: input.quantity,
+      amount: product.sellingPrice * input.quantity,
+      recordedBy: by?.name ?? null,
+      deviceId: by?.deviceId ?? null
+    }
+    if (input.paymentType === 'CREDIT') {
+      tx.insert(creditSales)
+        .values({ ...sale, memberId: input.memberId!, productName: product.name, soldAt: nowLocalIso() })
+        .run()
+      return
+    }
     tx.insert(payments)
       .values({
-        id,
-        productId: product.id,
-        quantity: input.quantity,
-        amount: product.sellingPrice * input.quantity,
+        ...sale,
         paymentType: input.paymentType,
         category: product.productType,
         paidAt: nowLocalIso(),
         receiptNo: nextReceiptNo(tx),
-        memberId: input.memberId ?? null,
-        recordedBy: by?.name ?? null,
-        deviceId: by?.deviceId ?? null
+        memberId: input.memberId ?? null
       })
       .run()
   })
@@ -176,38 +189,46 @@ const undoSecondsLeft = (paidAt: string): number =>
   // paidAt is local time, which Date reads as such.
   Math.max(0, Math.floor((new Date(paidAt).getTime() + UNDO_MINUTES * 60_000 - Date.now()) / 1000))
 
+/** Sales paid for and sales on credit, as one list; `where` filters on s.id, s.deviceId and s.paidAt. */
 function staffSales(db: Db, where: SQL): StaffSale[] {
   return db
     .all<Omit<StaffSale, 'undoSecondsLeft'>>(sql`
-      select p.id, p.paid_at as paidAt, coalesce(pr.name, 'Deleted product') as productName,
-        coalesce(p.quantity, 1) as quantity, p.amount, p.payment_type as paymentType,
-        trim(m.first_name || ' ' || m.last_name) as memberName
-      from payments p
-      left join products pr on pr.id = p.product_id
-      left join members m on m.id = p.member_id
+      select s.id, s.paidAt, s.productName, s.quantity, s.amount, s.paymentType, s.memberName from (
+        select p.id, p.device_id as deviceId, p.paid_at as paidAt, p.created_at as createdAt,
+          coalesce(pr.name, 'Deleted product') as productName, coalesce(p.quantity, 1) as quantity, p.amount,
+          p.payment_type as paymentType, trim(m.first_name || ' ' || m.last_name) as memberName
+        from payments p
+        left join products pr on pr.id = p.product_id
+        left join members m on m.id = p.member_id
+        union all
+        select c.id, c.device_id, c.sold_at, c.sold_at, c.product_name, c.quantity, c.amount,
+          'CREDIT', trim(m.first_name || ' ' || m.last_name)
+        from credit_sales c join members m on m.id = c.member_id
+      ) s
       where ${where}
-      order by p.paid_at desc, p.created_at desc`)
+      order by s.paidAt desc, s.createdAt desc`)
     .map((s) => ({ ...s, undoSecondsLeft: undoSecondsLeft(s.paidAt) }))
 }
 
-export function staffSale(db: Db, paymentId: string): StaffSale {
-  const sale = staffSales(db, sql`p.id = ${paymentId}`)[0]
+export function staffSale(db: Db, id: string): StaffSale {
+  const sale = staffSales(db, sql`s.id = ${id}`)[0]
   if (!sale) throw new AppError('That sale no longer exists.')
   return sale
 }
 
 /** One phone's sales today, newest first. */
 export function deviceSalesToday(db: Db, deviceId: string): StaffSale[] {
-  return staffSales(db, sql`p.device_id = ${deviceId} and substr(p.paid_at, 1, 10) = ${todayIso()}`)
+  return staffSales(db, sql`s.deviceId = ${deviceId} and substr(s.paidAt, 1, 10) = ${todayIso()}`)
 }
 
 /** A phone takes back its own sale, for a few minutes after; the items go back into stock. */
-export function undoSale(db: Db, paymentId: string, deviceId: string): StaffSale {
-  const sale = staffSales(db, sql`p.id = ${paymentId} and p.device_id = ${deviceId}`)[0]
+export function undoSale(db: Db, id: string, deviceId: string): StaffSale {
+  const sale = staffSales(db, sql`s.id = ${id} and s.deviceId = ${deviceId}`)[0]
   if (!sale) throw new AppError('That sale wasn’t recorded on this phone.')
   if (sale.undoSecondsLeft === 0) {
     throw new AppError(`It’s over ${UNDO_MINUTES} minutes since that sale. Ask the front desk to delete it.`)
   }
-  deletePayment(db, paymentId)
+  if (sale.paymentType === 'CREDIT') deleteCreditSale(db, id)
+  else deletePayment(db, id)
   return sale
 }

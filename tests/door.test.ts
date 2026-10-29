@@ -9,7 +9,8 @@ import type { Db } from '../src/main/db/client'
 import { payments } from '../src/main/db/schema'
 import { createDoorServer } from '../src/main/door/server'
 import { createPairing, type PairedDevice, type Pairing } from '../src/main/lan/pairing'
-import { checkIn, findForCheckIn } from '../src/main/services/visits'
+import { createPtRegistration, createTrainer, createPtPackage, listPtPackages, listTrainers } from '../src/main/services/training'
+import { checkIn, checkInOptions, findForCheckIn, listVisits } from '../src/main/services/visits'
 import { addDays, todayIso } from '../src/shared/dates'
 import { makeDb, seedMember, seedPlan, seedRegistration } from './helpers'
 
@@ -40,7 +41,8 @@ beforeEach(async () => {
     pair: (c) => pairing.pair(c),
     gymName: () => 'LSFS',
     find: (mobile) => findForCheckIn(db, mobile),
-    checkIn: (id) => checkIn(db, id, 'DOOR'),
+    options: (id) => checkInOptions(db, id),
+    checkIn: (id, ptRegistrationId) => checkIn(db, id, 'DOOR', new Date(), ptRegistrationId),
     now: () => clock
   })
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
@@ -109,7 +111,52 @@ describe('door server', () => {
     const found = await (await post('/api/find', { mobile: '077 123 4567' }, token)).json()
     expect(found).toEqual({ people: [{ id, name: 'Nimal P.' }] })
     const result = await (await post('/api/check-in', { memberId: id }, token)).json()
-    expect(result).toEqual({ firstName: 'Nimal', status: 'EXPIRED', endDate: addDays(todayIso(), -5), repeat: false })
+    expect(result).toEqual({
+      firstName: 'Nimal',
+      status: 'EXPIRED',
+      endDate: addDays(todayIso(), -5),
+      repeat: false,
+      session: null
+    })
+  })
+
+  it('asks someone with personal training what they are here for, then uses a session', async () => {
+    const today = todayIso()
+    const id = seedMember(db, { firstName: 'Nimal', lastName: 'Perera', mobileNumber: '0771234567' })
+    const reg = seedRegistration(db, seedPlan(db), [id], addDays(today, -10), addDays(today, 20))
+    db.insert(payments).values({ id: randomUUID(), registrationId: reg, amount: 10000, paymentType: 'CASH', category: 'MEMBERSHIP' }).run()
+    createTrainer(db, { name: 'Kasun Silva', isOwner: false, commissionPercent: 30 })
+    createPtPackage(db, { name: '12 sessions', sessions: 12, price: 24000, validDuration: 2, validDurationType: 'MONTH' })
+    const pt = createPtRegistration(db, {
+      memberId: id,
+      trainerId: listTrainers(db)[0].id,
+      packageId: listPtPackages(db)[0].id,
+      sessions: 12,
+      startDate: today,
+      endDate: addDays(today, 59),
+      amount: 24000,
+      commission: 7200,
+      payment: { amount: 24000, paymentType: 'CASH' }
+    })
+    const token = await pairedToken()
+
+    // The choice: the trainer's first name and sessions left, nothing else; nothing recorded yet.
+    const ask = await (await post('/api/check-in', { memberId: id }, token)).json()
+    expect(ask).toEqual({ choose: [{ id: pt.id, trainer: 'Kasun', sessionsLeft: 12 }] })
+    expect(listVisits(db, { from: today, to: today })).toEqual([])
+
+    const done = await (await post('/api/check-in', { memberId: id, purpose: pt.id }, token)).json()
+    expect(done).toMatchObject({ firstName: 'Nimal', status: 'OK', repeat: false, session: { trainer: 'Kasun', sessionsLeft: 11 } })
+    expect(listVisits(db, { from: today, to: today })).toEqual([
+      expect.objectContaining({ ptRegistrationId: pt.id, trainerName: 'Kasun Silva' })
+    ])
+    // Tapping again doesn't use another session.
+    const again = await (await post('/api/check-in', { memberId: id, purpose: pt.id }, token)).json()
+    expect(again).toMatchObject({ repeat: true, session: { sessionsLeft: 11 } })
+
+    // Choosing the gym is a plain visit (already checked in, so a repeat).
+    const gym = await (await post('/api/check-in', { memberId: id, purpose: 'GYM' }, token)).json()
+    expect(gym).toMatchObject({ repeat: true, session: null })
   })
 
   it('limits lookups per tablet, and refuses oversized or broken requests', async () => {

@@ -45,6 +45,7 @@ import {
 import { LanDevicesCard } from '../components/LanDevicesCard'
 import { OwnerSummaryCard } from '../components/OwnerSummaryCard'
 import { PageHeader } from '../components/PageHeader'
+import { TrainersCard } from '../components/TrainersCard'
 import { UpdatesCard } from '../components/Updates'
 import { api, notifyError, notifySuccess, useAction } from '../lib/api'
 import { fileSize, formatDateTime, fromNow, lkr } from '../lib/format'
@@ -316,13 +317,19 @@ function LocalCard() {
   )
 }
 
+const exampleItems = [
+  { soldAt: addDays(todayIso(), -12), productName: 'Yeti Isotonic', quantity: 2, amount: 700, owed: 700 },
+  { soldAt: addDays(todayIso(), -3), productName: 'Whey Protein 1kg', quantity: 1, amount: 12000, owed: 12000 }
+]
+
 const example = (kind: ReminderKind, packages: PackagePrice[]) =>
   reminderValues({
     firstName: 'Nimal',
     plan: 'One Month',
     endDate: addDays(todayIso(), kind === 'EXPIRED' ? -5 : 5),
-    balance: 5000,
-    packages
+    balance: kind === 'CREDIT' ? 12700 : 5000,
+    packages,
+    items: exampleItems
   })
 
 function RemindersForm({ settings }: { settings: ReminderSettings }) {
@@ -342,10 +349,11 @@ function RemindersForm({ settings }: { settings: ReminderSettings }) {
         <Title order={4}>WhatsApp reminders</Title>
       </Group>
       <Text size="sm" mb="md">
-        The WhatsApp buttons on Renewals due, Not renewed and a member’s unpaid registration open a chat with one of these
-        messages typed in; check it, then press send. <Code>{'{name}'}</Code>, <Code>{'{plan}'}</Code>,{' '}
+        The WhatsApp buttons on Renewals due, Not renewed, On credit and a member’s unpaid registration open a chat with
+        one of these messages typed in; check it, then press send. <Code>{'{name}'}</Code>, <Code>{'{plan}'}</Code>,{' '}
         <Code>{'{endDate}'}</Code> and <Code>{'{balance}'}</Code> are filled in for each member, and{' '}
-        <Code>{'{packages}'}</Code> becomes a price list of the packages ticked when the reminder is sent.
+        <Code>{'{packages}'}</Code> becomes a price list of the packages ticked when the reminder is sent. In the store
+        credit message, <Code>{'{balance}'}</Code> is what they owe and <Code>{'{items}'}</Code> lists the items.
       </Text>
       {!settings.whatsappDesktop && (
         <Alert color="gray" icon={<IconInfoCircle />} mb="md">
@@ -456,6 +464,7 @@ export function Settings() {
         <LocalCard />
         <RemindersCard />
         <ReceiptsCard />
+        <TrainersCard />
         <LanDevicesCard
           group="doorTablet"
           title="Door check-in tablet"

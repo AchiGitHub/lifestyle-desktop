@@ -55,6 +55,7 @@ describe('dashboard report', () => {
       through: '2026-10-28',
       income: 12300,
       memberships: 12000,
+      personalTraining: 0,
       store: 300,
       newSignUps: 1,
       renewals: 1,
@@ -82,6 +83,7 @@ describe('dashboard report', () => {
       to: '2026-09-28',
       income: 10000,
       memberships: 10000,
+      personalTraining: 0,
       store: 0,
       newSignUps: 2,
       renewals: 0

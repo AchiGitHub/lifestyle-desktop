@@ -1,5 +1,6 @@
 import { AppShell, Badge, Box, Button, Group, Image, NavLink, ScrollArea, Stack, Text, Tooltip } from '@mantine/core'
 import {
+  IconBarbell,
   IconCalendarDue,
   IconCash,
   IconCloudCheck,
@@ -10,6 +11,7 @@ import {
   IconLayoutDashboard,
   IconListDetails,
   IconLogout,
+  IconNotebook,
   IconPlus,
   IconSettings,
   IconShoppingCart,
@@ -37,8 +39,10 @@ const NAV = [
   { to: '/registrations', label: 'Registrations', icon: IconId },
   { to: '/expiring', label: 'Renewals due', icon: IconCalendarDue },
   { to: '/expired', label: 'Not renewed', icon: IconUserOff },
+  { to: '/personal-training', label: 'Personal training', icon: IconBarbell },
   { to: '/payments', label: 'Payments', icon: IconCash },
   { to: '/store', label: 'Store', icon: IconShoppingCart },
+  { to: '/credit', label: 'On credit', icon: IconNotebook },
   { to: '/plans', label: 'Plans', icon: IconListDetails }
 ]
 

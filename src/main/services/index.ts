@@ -1,6 +1,7 @@
 import type { Api } from '../../shared/api'
 import type { SellInput, StockInput } from '../../shared/schemas'
 import type { Db } from '../db/client'
+import * as credit from './credit'
 import * as joining from './joining'
 import * as members from './members'
 import * as payments from './payments'
@@ -8,6 +9,7 @@ import * as plans from './plans'
 import * as products from './products'
 import * as registrations from './registrations'
 import { dashboardReport } from './reports'
+import * as training from './training'
 import * as visits from './visits'
 
 export type DomainApi = Omit<
@@ -55,8 +57,34 @@ export function createServices(db: Db): DomainApi {
     },
     visits: {
       list: sync(visits.listVisits),
-      checkIn: sync((d: Db, memberId: string) => visits.checkIn(d, memberId, 'DESK')),
+      options: sync((d: Db, memberId: string) => visits.checkInOptions(d, memberId)),
+      checkIn: sync((d: Db, memberId: string, ptRegistrationId?: string | null) =>
+        visits.checkIn(d, memberId, 'DESK', new Date(), ptRegistrationId ?? null)
+      ),
       delete: sync(visits.deleteVisit)
+    },
+    trainers: {
+      list: sync(training.listTrainers),
+      create: sync(training.createTrainer),
+      update: sync(training.updateTrainer),
+      setArchived: sync(training.setTrainerArchived),
+      delete: sync(training.deleteTrainer)
+    },
+    ptPackages: {
+      list: sync(training.listPtPackages),
+      create: sync(training.createPtPackage),
+      update: sync(training.updatePtPackage),
+      setArchived: sync(training.setPtPackageArchived),
+      delete: sync(training.deletePtPackage)
+    },
+    personalTraining: {
+      list: sync(training.listPtRegistrations),
+      create: sync(training.createPtRegistration),
+      update: sync(training.updatePtRegistration),
+      delete: sync(training.deletePtRegistration),
+      addPayment: sync(training.addPtPayment),
+      sessions: sync(training.listPtSessions),
+      commission: sync(training.commissionReport)
     },
     registrations: {
       list: sync(registrations.listRegistrations),
@@ -84,6 +112,12 @@ export function createServices(db: Db): DomainApi {
       receiveStock: sync((d: Db, input: StockInput) => products.receiveStock(d, input)),
       countStock: sync((d: Db, input: StockInput) => products.countStock(d, input)),
       stockChanges: sync(products.listStockChanges)
+    },
+    credit: {
+      owed: sync(credit.owedList),
+      sales: sync(credit.listCreditSales),
+      pay: sync(credit.payCredit),
+      deleteSale: sync(credit.deleteCreditSale)
     },
     reports: {
       dashboard: sync(dashboardReport)

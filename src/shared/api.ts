@@ -5,11 +5,13 @@ import type {
   PaymentType,
   ProductType,
   ReminderKind,
+  SaleMethod,
   StockChangeKind,
   VisitSource,
   VisitStatus
 } from './enums'
 import type {
+  CreditPaymentInput,
   DateRangeInput,
   DurationInput,
   JoiningFeeSettingsInput,
@@ -19,6 +21,10 @@ import type {
   PaymentFilterInput,
   ProductEditInput,
   ProductInput,
+  PtCreateInput,
+  PtPackageInput,
+  PtPaymentInput,
+  PtUpdateInput,
   ReceiptRecipientInput,
   ReceiptSettingsInput,
   RegistrationCreateInput,
@@ -26,7 +32,8 @@ import type {
   ReminderInput,
   ReminderSettingsInput,
   SellInput,
-  StockInput
+  StockInput,
+  TrainerInput
 } from './schemas'
 
 export interface Member {
@@ -150,7 +157,7 @@ export interface StaffSale {
   productName: string
   quantity: number
   amount: number
-  paymentType: PaymentType
+  paymentType: SaleMethod
   /** Who bought it, if a member was chosen. */
   memberName: string | null
   /** How much longer the phone may undo it, as of the reply (0 when it can't). */
@@ -193,16 +200,139 @@ export type StoreChange =
       productName: string
       quantity: number
       amount: number
-      paymentType: PaymentType
+      paymentType: SaleMethod
       memberName: string | null
     }
   | ({ kind: StockChangeKind; by: string } & StockResult)
+
+/** An item taken on credit. */
+export interface CreditSale {
+  id: string
+  memberId: string
+  memberName: string
+  productName: string
+  quantity: number
+  amount: number
+  /** What's still to pay on it: payments go to the oldest items first. */
+  owed: number
+  /** Local 'YYYY-MM-DDTHH:mm:ss'. */
+  soldAt: string
+  /** The instructor's name; null at the front desk. */
+  recordedBy: string | null
+}
+
+/** Where a member's store credit stands. */
+export interface MemberCredit {
+  memberId: string
+  firstName: string
+  lastName: string
+  mobileNumber: string | null
+  owed: number
+  /** Items not yet paid off, oldest first. */
+  items: CreditSale[]
+  /** When a WhatsApp reminder about it was last opened (UTC). */
+  remindedAt: string | null
+  /** When they last paid towards it (local time). */
+  lastPaidAt: string | null
+}
 
 export interface MemberDetail {
   member: Member
   registrations: Registration[]
   payments: Payment[]
   visits: { lastAt: string | null; last30Days: number }
+  credit: MemberCredit
+  personalTraining: PtRegistration[]
+}
+
+export interface Trainer {
+  id: string
+  name: string
+  /** The owner gets no commission. */
+  isOwner: boolean
+  commissionPercent: number
+  archived: boolean
+  packageCount: number
+}
+
+/** A personal training session type. */
+export interface PtPackage {
+  id: string
+  name: string
+  sessions: number
+  price: number
+  /** Sessions are used within this long from the start. */
+  validDuration: number
+  validDurationType: DurationType
+  archived: boolean
+  soldCount: number
+}
+
+/** A member's personal training package. */
+export interface PtRegistration {
+  id: string
+  memberId: string
+  memberName: string
+  mobileNumber: string | null
+  trainerId: string
+  trainerName: string
+  trainerIsOwner: boolean
+  packageId: string | null
+  packageName: string
+  sessions: number
+  /** Sessions had: check-ins for personal training. */
+  used: number
+  left: number
+  startDate: string
+  /** Sessions left after this day can't be used. */
+  endDate: string
+  amount: number
+  /** The trainer's share, in rupees; 0 for the owner. */
+  commission: number
+  paid: number
+  balance: number
+  /** Local 'YYYY-MM-DDTHH:mm:ss'. */
+  lastSessionAt: string | null
+}
+
+export type NewPtRegistration = PtRegistration & { paymentId: string | null }
+
+/** A personal training session: a check-in against a package. */
+export interface PtSession {
+  /** The visit's id. */
+  id: string
+  checkedInAt: string
+  memberId: string
+  memberName: string
+  trainerId: string
+  trainerName: string
+  ptRegistrationId: string
+  packageName: string
+  /** Which of the package's sessions this was: 6 (of 12). */
+  number: number
+  sessions: number
+}
+
+/** Packages sold in a month by one trainer, and the commission on them. */
+export interface TrainerCommission {
+  trainerId: string
+  trainerName: string
+  isOwner: boolean
+  packages: PtRegistration[]
+  total: number
+  paid: number
+  commission: number
+  /** Sessions they gave that month. */
+  sessions: number
+}
+
+/** A personal training package someone can use at check-in today. */
+export interface CheckInOption {
+  ptRegistrationId: string
+  trainerName: string
+  packageName: string
+  sessionsLeft: number
+  endDate: string
 }
 
 export interface Visit {
@@ -213,6 +343,9 @@ export interface Visit {
   checkedInAt: string
   source: VisitSource
   status: VisitStatus
+  /** A personal training session, with whom. */
+  ptRegistrationId: string | null
+  trainerName: string | null
 }
 
 /** The outcome of a check-in, for the door tablet and the desk alert. Never includes money. */
@@ -227,6 +360,8 @@ export interface CheckInResult {
   /** Latest membership end date, if they have one. */
   endDate: string | null
   source: VisitSource
+  /** For a personal training session: with whom, and how many sessions are left after it. */
+  session: { trainerName: string; sessionsLeft: number } | null
 }
 
 /** A member offered on the door tablet: first name and initial only. */
@@ -269,6 +404,7 @@ export interface DuplicateGroup {
 export interface PeriodFigures {
   income: number
   memberships: number
+  personalTraining: number
   store: number
   newSignUps: number
   renewals: number
@@ -390,6 +526,7 @@ export interface DaySummary {
   count: number
   /** Membership payments, joining fees included. */
   memberships: number
+  personalTraining: number
   /** Store sales and other payments. */
   store: number
   /** Registrations entered that day where nobody had registered before. */
@@ -482,13 +619,52 @@ export interface Api {
     create(input: ProductInput): Promise<void>
     update(id: string, input: ProductEditInput): Promise<void>
     delete(ids: string[]): Promise<void>
-    /** Returns the sale's payment id. */
+    /** Returns the sale's payment id, or for a sale on credit the credit sale's id. */
     sell(input: SellInput): Promise<string>
     /** Adds a delivery to the stock. */
     receiveStock(input: StockInput): Promise<StockResult>
     /** Sets the stock to what's on the shelf. */
     countStock(input: StockInput): Promise<StockResult>
     stockChanges(range: DateRangeInput): Promise<StockChange[]>
+  }
+  /** Personal trainers, set up in Settings. */
+  trainers: {
+    list(): Promise<Trainer[]>
+    create(input: TrainerInput): Promise<void>
+    update(id: string, input: TrainerInput): Promise<void>
+    setArchived(id: string, archived: boolean): Promise<void>
+    delete(id: string): Promise<void>
+  }
+  /** Personal training session types. */
+  ptPackages: {
+    list(): Promise<PtPackage[]>
+    create(input: PtPackageInput): Promise<void>
+    update(id: string, input: PtPackageInput): Promise<void>
+    setArchived(id: string, archived: boolean): Promise<void>
+    delete(id: string): Promise<void>
+  }
+  /** Members' personal training packages, kept apart from membership registrations. */
+  personalTraining: {
+    /** All of them, newest first. */
+    list(): Promise<PtRegistration[]>
+    create(input: PtCreateInput): Promise<NewPtRegistration>
+    update(id: string, input: PtUpdateInput): Promise<void>
+    delete(id: string): Promise<void>
+    /** Returns the payment's id, for its receipt. */
+    addPayment(input: PtPaymentInput): Promise<string>
+    sessions(range: DateRangeInput): Promise<PtSession[]>
+    /** A 'YYYY-MM' month: packages sold per trainer and their commission. */
+    commission(month: string): Promise<TrainerCommission[]>
+  }
+  /** Store items members took to pay for later. */
+  credit: {
+    /** Everyone who owes, most owed first. */
+    owed(): Promise<MemberCredit[]>
+    sales(range: DateRangeInput): Promise<CreditSale[]>
+    /** Returns the payment's id, for its receipt. */
+    pay(input: CreditPaymentInput): Promise<string>
+    /** A mistake: the items go back into stock. */
+    deleteSale(id: string): Promise<void>
   }
   reports: {
     /** The dashboard for a 'YYYY-MM' month (a later month means this one). */
@@ -509,6 +685,8 @@ export interface Api {
     save(input: ReminderSettingsInput): Promise<void>
     /** Opens WhatsApp with the message filled in; staff check it and press send. */
     send(input: ReminderInput): Promise<void>
+    /** The same, about what a member owes for store items. */
+    sendCredit(memberId: string): Promise<void>
   }
   receipts: {
     get(paymentId: string): Promise<Receipt>
@@ -521,8 +699,11 @@ export interface Api {
   }
   visits: {
     list(range: DateRangeInput): Promise<Visit[]>
-    /** A check-in at the front desk. */
-    checkIn(memberId: string): Promise<CheckInResult>
+    /** Personal training packages they could check in for today; none means it's a gym visit. */
+    options(memberId: string): Promise<CheckInOption[]>
+    /** A check-in at the front desk; with a package, a personal training session. */
+    checkIn(memberId: string, ptRegistrationId?: string | null): Promise<CheckInResult>
+    /** Removing a personal training session gives the session back. */
     delete(id: string): Promise<void>
   }
   doorTablet: {

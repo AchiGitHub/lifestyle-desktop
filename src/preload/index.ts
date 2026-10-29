@@ -10,6 +10,10 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
   registrations: ['list', 'get', 'create', 'update', 'dismiss', 'undismiss', 'delete', 'expiring', 'expired'],
   payments: ['list', 'add', 'delete'],
   products: ['list', 'create', 'update', 'delete', 'sell', 'receiveStock', 'countStock', 'stockChanges'],
+  credit: ['owed', 'sales', 'pay', 'deleteSale'],
+  trainers: ['list', 'create', 'update', 'setArchived', 'delete'],
+  ptPackages: ['list', 'create', 'update', 'setArchived', 'delete'],
+  personalTraining: ['list', 'create', 'update', 'delete', 'addPayment', 'sessions', 'commission'],
   reports: ['dashboard'],
   backup: [
     'status',
@@ -21,11 +25,11 @@ const METHODS: { [G in keyof Api]: (keyof Api[G])[] } = {
     'restoreFromFile',
     'restoreLocal'
   ],
-  reminders: ['settings', 'save', 'send'],
+  reminders: ['settings', 'save', 'send', 'sendCredit'],
   receipts: ['get', 'print', 'sendWhatsApp', 'printSample', 'settings', 'saveSettings'],
   summary: ['days', 'sendToOwner', 'status', 'setEnabled', 'setOwnerEmail', 'updateNow'],
   updates: ['status', 'check', 'install'],
-  visits: ['list', 'checkIn', 'delete'],
+  visits: ['list', 'options', 'checkIn', 'delete'],
   doorTablet: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice'],
   staffDevices: ['status', 'setEnabled', 'setPort', 'startPairing', 'removeDevice']
 }

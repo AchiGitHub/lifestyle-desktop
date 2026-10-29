@@ -1,4 +1,4 @@
-import { ActionIcon, Group, Paper, SimpleGrid, Text } from '@mantine/core'
+import { ActionIcon, Badge, Group, Paper, SimpleGrid, Text } from '@mantine/core'
 import { DatePickerInput } from '@mantine/dates'
 import { modals } from '@mantine/modals'
 import { IconTrash } from '@tabler/icons-react'
@@ -62,6 +62,7 @@ export function CheckIns() {
       <SimpleGrid cols={{ base: 2, md: 4 }} mb="md">
         <Count label={date === todayIso() ? 'Checked in today' : `Checked in ${formatDate(date)}`} value={data.length} />
         <Count label="Needed the desk" value={data.filter((v) => v.status !== 'OK').length} />
+        <Count label="Personal training" value={data.filter((v) => v.ptRegistrationId).length} />
       </SimpleGrid>
       <AppTable<Visit>
         records={data}
@@ -86,6 +87,20 @@ export function CheckIns() {
             )
           },
           { accessor: 'status', title: 'Status', render: (v) => <VisitStatusBadge status={v.status} /> },
+          {
+            accessor: 'trainerName',
+            title: 'For',
+            render: (v) =>
+              v.trainerName ? (
+                <Badge variant="light" color="pink">
+                  PT · {v.trainerName}
+                </Badge>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Gym
+                </Text>
+              )
+          },
           { accessor: 'source', title: 'Where', render: (v) => VISIT_SOURCE_LABELS[v.source] },
           {
             accessor: 'actions',
@@ -103,7 +118,7 @@ export function CheckIns() {
                     children: (
                       <Text size="sm">
                         {v.memberName} at {dayjs(v.checkedInAt).format('h:mm A')}. Use this for a wrong tap at the
-                        door.
+                        door.{v.trainerName && ' The personal training session is given back.'}
                       </Text>
                     ),
                     labels: { confirm: 'Remove', cancel: 'Cancel' },

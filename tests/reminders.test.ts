@@ -16,6 +16,7 @@ import {
 import { addDays, todayIso } from '../src/shared/dates'
 import {
   DEFAULT_TEMPLATES,
+  creditLines,
   fillTemplate,
   packageLines,
   reminderValues,
@@ -73,9 +74,26 @@ describe('message templates', () => {
       plan: 'Gold',
       endDate: '3 Nov 2026',
       balance: 'Rs. 8,000',
-      packages: '• Silver – Rs. 6,000\n• Gold – Rs. 12,000'
+      packages: '• Silver – Rs. 6,000\n• Gold – Rs. 12,000',
+      items: ''
     })
     expect(packageLines([])).toBe('')
+  })
+
+  it('lists store items on credit, part-paid ones with what is left, and cuts a long list short', () => {
+    const item = (day: number, owed = 700) => ({
+      soldAt: `2026-10-${String(day).padStart(2, '0')}T10:00:00`,
+      productName: 'Yeti Isotonic',
+      quantity: 2,
+      amount: 700,
+      owed
+    })
+    expect(creditLines([item(3, 200), item(12)])).toBe(
+      '• 3 Oct: Yeti Isotonic × 2 (Rs. 200 left of Rs. 700)\n• 12 Oct: Yeti Isotonic × 2 – Rs. 700'
+    )
+    const lines = creditLines(Array.from({ length: 13 }, (_, i) => item(i + 1))).split('\n')
+    expect(lines).toHaveLength(11)
+    expect(lines[10]).toBe('• and 3 more')
   })
 
   it('fills known placeholders and leaves anything else alone', () => {

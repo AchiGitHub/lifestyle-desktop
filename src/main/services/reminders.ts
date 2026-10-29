@@ -18,6 +18,7 @@ import {
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
 import { membershipTypes, reminders } from '../db/schema'
+import { memberCredit } from './credit'
 import { AppError, nowUtc } from './errors'
 import { getRegistration } from './registrations'
 import { putSetting, readSettings } from './settings'
@@ -101,7 +102,7 @@ export function saveReminderSettings(db: Db, raw: ReminderSettingsInput): void {
 
 export interface PreparedReminder {
   registrationId: string
-  kind: ReminderKind
+  kind: Exclude<ReminderKind, 'CREDIT'>
   phone: string
   text: string
 }
@@ -131,6 +132,27 @@ export function prepareReminder(db: Db, raw: ReminderInput): PreparedReminder {
     phone,
     text: fillTemplate(reminderTemplates(db)[input.kind], values)
   }
+}
+
+/** The WhatsApp number and message about what a member owes for store items. */
+export function prepareCreditReminder(db: Db, memberId: string): { phone: string; text: string } {
+  const credit = memberCredit(db, memberId)
+  if (credit.owed <= 0) throw new AppError(`${credit.firstName} doesn’t owe anything for store items.`)
+  const phone = whatsappNumber(credit.mobileNumber)
+  if (!phone) {
+    throw new AppError(
+      `${credit.firstName}'s mobile number (${credit.mobileNumber || 'none'}) can't be used for WhatsApp. Check it in their details.`
+    )
+  }
+  const values = reminderValues({
+    firstName: credit.firstName,
+    plan: '',
+    endDate: todayIso(),
+    balance: credit.owed,
+    packages: [],
+    items: credit.items
+  })
+  return { phone, text: fillTemplate(reminderTemplates(db).CREDIT, values) }
 }
 
 export function recordReminder(db: Db, reminder: Pick<PreparedReminder, 'registrationId' | 'kind'>): void {

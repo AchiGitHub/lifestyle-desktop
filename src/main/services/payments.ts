@@ -55,12 +55,15 @@ interface PaymentRow {
   registrationName: string | null
   memberNames: string | null
   productName: string | null
+  ptPackageName: string | null
 }
 
 function describe(p: PaymentRow): string {
   if (p.registrationId) return p.memberNames || p.registrationName || 'Membership fee'
   if (p.legacyRegistrationId) return 'Membership fee (registration deleted)'
+  if (p.ptPackageName) return `Personal training: ${p.ptPackageName}`
   if (p.productName) return p.quantity ? `${p.productName} × ${p.quantity}` : p.productName
+  if (p.category === 'STORE_CREDIT') return 'Store items on credit'
   return PAYMENT_CATEGORY_LABELS[p.category]
 }
 
@@ -70,13 +73,14 @@ export function loadPayments(db: Db, where: SQL): Payment[] {
       p.product_id as productId, p.quantity, p.amount, p.payment_type as paymentType, p.category,
       p.paid_at as paidAt, p.receipt_no as receiptNo, p.recorded_by as recordedBy,
       p.member_id as memberId, trim(buyer.first_name || ' ' || buyer.last_name) as memberName,
-      r.name as registrationName, pr.name as productName,
+      r.name as registrationName, pr.name as productName, pt.package_name as ptPackageName,
       (select group_concat(trim(m.first_name || ' ' || m.last_name), ', ')
          from registration_members rm join members m on m.id = rm.member_id
          where rm.registration_id = p.registration_id) as memberNames
     from payments p
     left join registrations r on r.id = p.registration_id
     left join products pr on pr.id = p.product_id
+    left join pt_registrations pt on pt.id = p.pt_registration_id
     left join members buyer on buyer.id = p.member_id
     where ${where}
     order by p.paid_at desc, p.created_at desc`)

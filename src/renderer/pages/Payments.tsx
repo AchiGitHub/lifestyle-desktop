@@ -38,9 +38,11 @@ import { formatDateTime, lkr } from '../lib/format'
 
 export const CATEGORY_BADGE: Record<PaymentCategory, string> = {
   MEMBERSHIP: 'brand',
+  PERSONAL_TRAINING: 'pink',
   SUPPLEMENT: 'grape',
   BEVERAGE: 'flame',
-  OTHER: 'gray'
+  OTHER: 'gray',
+  STORE_CREDIT: 'teal'
 }
 
 export function PaymentsTable({

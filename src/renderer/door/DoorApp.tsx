@@ -5,11 +5,12 @@ import type { CheckInCandidate } from '@shared/api'
 import { daysBetween, todayIso } from '@shared/dates'
 import { longDate } from '@shared/format'
 import logo from '../assets/logo.jpeg'
-import { checkIn, DoorError, find, forgetToken, getToken, pair, ping, type DoorCheckIn } from './api'
+import { checkIn, DoorError, find, forgetToken, getToken, pair, ping, type DoorCheckIn, type DoorChoice } from './api'
 
 type Screen =
   | { kind: 'number' }
   | { kind: 'pick'; people: CheckInCandidate[] }
+  | { kind: 'choose'; person: CheckInCandidate; choices: DoorChoice[] }
   | { kind: 'notFound' }
   | { kind: 'result'; result: DoorCheckIn }
 
@@ -70,6 +71,11 @@ function Result({ result: r, onDone }: { result: DoorCheckIn; onDone: () => void
           : ''
   } else if (r.status === 'EXPIRED' && r.endDate) {
     detail = `Your membership ended on ${longDate(r.endDate)}. Please see the front desk.`
+  }
+  if (r.session) {
+    const { trainer, sessionsLeft } = r.session
+    const session = `Personal training with ${trainer}: ${sessionsLeft === 0 ? 'that was your last session' : `${sessionsLeft} session${sessionsLeft === 1 ? '' : 's'} left`}.`
+    detail = r.repeat ? `You’re already checked in for personal training with ${trainer}.` : ok ? session : `${session} ${detail}`
   }
   return (
     <Stack align="center" gap="lg" py="xl">
@@ -228,9 +234,11 @@ export function DoorApp() {
       const { people } = await find(digits)
       setScreen(people.length ? { kind: 'pick', people } : { kind: 'notFound' })
     })
-  const choose = (id: string) =>
+  // Someone with personal training first says what they're here for.
+  const choose = (person: CheckInCandidate, purpose?: string) =>
     run(async () => {
-      setScreen({ kind: 'result', result: await checkIn(id) })
+      const reply = await checkIn(person.id, purpose)
+      setScreen('choose' in reply ? { kind: 'choose', person, choices: reply.choose } : { kind: 'result', result: reply })
     })
 
   let body
@@ -257,8 +265,39 @@ export function DoorApp() {
       <Stack gap="md">
         <Title order={2}>Tap your name</Title>
         {screen.people.map((p) => (
-          <Button key={p.id} size="xl" h={80} fz={28} variant="default" loading={busy} onClick={() => choose(p.id)}>
+          <Button key={p.id} size="xl" h={80} fz={28} variant="default" loading={busy} onClick={() => choose(p)}>
             {p.name}
+          </Button>
+        ))}
+        <Button size="lg" variant="subtle" color="gray" onClick={reset}>
+          Not me – start again
+        </Button>
+      </Stack>
+    )
+  } else if (screen.kind === 'choose') {
+    const { person } = screen
+    body = (
+      <Stack gap="md">
+        <Title order={2}>What are you here for?</Title>
+        <Button size="xl" h={80} fz={28} variant="default" loading={busy} onClick={() => choose(person, 'GYM')}>
+          Gym workout
+        </Button>
+        {screen.choices.map((c) => (
+          <Button
+            key={c.id}
+            size="xl"
+            h={96}
+            variant="light"
+            loading={busy}
+            onClick={() => choose(person, c.id)}
+            styles={{ label: { flexDirection: 'column', gap: 4 } }}
+          >
+            <Text fz={26} fw={600}>
+              Personal training with {c.trainer}
+            </Text>
+            <Text fz={18} c="dimmed">
+              {c.sessionsLeft} session{c.sessionsLeft === 1 ? '' : 's'} left
+            </Text>
           </Button>
         ))}
         <Button size="lg" variant="subtle" color="gray" onClick={reset}>

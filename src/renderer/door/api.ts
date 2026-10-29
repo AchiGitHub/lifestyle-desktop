@@ -22,6 +22,20 @@ export interface DoorCheckIn {
   status: VisitStatus
   endDate: string | null
   repeat: boolean
+  /** A personal training session: the trainer's first name and sessions left after it. */
+  session: { trainer: string; sessionsLeft: number } | null
 }
 
-export const checkIn = (memberId: string) => client.call<DoorCheckIn>('POST', '/api/check-in', { memberId })
+/** A personal training package they could use today. */
+export interface DoorChoice {
+  id: string
+  trainer: string
+  sessionsLeft: number
+}
+
+/**
+ * Without `purpose`, someone with personal training gets the choice back and
+ * isn't checked in yet. `purpose` is 'GYM' or the package's id.
+ */
+export const checkIn = (memberId: string, purpose?: string) =>
+  client.call<DoorCheckIn | { choose: DoorChoice[] }>('POST', '/api/check-in', { memberId, purpose })

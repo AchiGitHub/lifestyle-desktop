@@ -14,6 +14,7 @@ import {
   PinInput,
   ScrollArea,
   SegmentedControl,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -37,10 +38,10 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { MemberChoice, StaffProduct, StaffSale } from '@shared/api'
 import {
   LOW_STOCK,
-  PAYMENT_TYPES,
-  PAYMENT_TYPE_LABELS,
   PRODUCT_TYPE_LABELS,
-  type PaymentType,
+  SALE_METHODS,
+  SALE_METHOD_LABELS,
+  type SaleMethod,
   type StockChangeKind
 } from '@shared/enums'
 import logo from '../assets/logo.jpeg'
@@ -57,7 +58,7 @@ const canUndo = (s: Sale): boolean => s.undoUntil > Date.now()
 type Notice = { color: 'teal' | 'gray'; text: string; sale?: Sale }
 
 const saleText = (s: StaffSale): string =>
-  `${s.quantity} × ${s.productName}${s.memberName ? ` to ${s.memberName}` : ''} · ${lkr(s.amount)} ${PAYMENT_TYPE_LABELS[s.paymentType].toLowerCase()}`
+  `${s.quantity} × ${s.productName}${s.memberName ? ` to ${s.memberName}` : ''} · ${lkr(s.amount)} ${SALE_METHOD_LABELS[s.paymentType].toLowerCase()}`
 
 function StockBadge({ quantity }: { quantity: number }) {
   if (quantity === 0) {
@@ -262,11 +263,11 @@ function SellSheet({
   error: string | null
   offline: boolean
   onClose: () => void
-  onSell: (quantity: number, paymentType: PaymentType, memberId: string | null) => void
+  onSell: (quantity: number, paymentType: SaleMethod, memberId: string | null) => void
   onError: (e: unknown) => void
 }) {
   const [quantity, setQuantity] = useState(1)
-  const [paymentType, setPaymentType] = useState<PaymentType>('CASH')
+  const [paymentType, setPaymentType] = useState<SaleMethod>('CASH')
   const [member, setMember] = useState<MemberChoice | null>(null)
   const [picking, setPicking] = useState(false)
   useEffect(() => {
@@ -295,6 +296,8 @@ function SellSheet({
     )
   }
 
+  const credit = paymentType === 'CREDIT'
+  const needsMember = credit && !member
   return (
     <Sheet title={product?.name ?? ''} opened={product !== null} onClose={onClose}>
       {product && (
@@ -311,10 +314,10 @@ function SellSheet({
               miw={0}
               justify="flex-start"
               leftSection={<IconUser size={18} />}
-              c={member ? undefined : 'dimmed'}
+              c={member ? undefined : credit ? 'orange.8' : 'dimmed'}
               onClick={() => setPicking(true)}
             >
-              {member ? member.name : 'Who’s buying? (optional)'}
+              {member ? member.name : credit ? 'Who’s buying?' : 'Who’s buying? (optional)'}
             </Button>
             {member && (
               <ActionIcon size={42} variant="default" aria-label="Not a member" onClick={() => setMember(null)}>
@@ -322,22 +325,34 @@ function SellSheet({
               </ActionIcon>
             )}
           </Group>
-          <SegmentedControl
-            fullWidth
-            size="md"
-            value={paymentType}
-            onChange={(v) => setPaymentType(v as PaymentType)}
-            data={PAYMENT_TYPES.map((t) => ({ value: t, label: PAYMENT_TYPE_LABELS[t] }))}
-          />
+          {/* Two rows: four choices don't fit across a phone. */}
+          <SimpleGrid cols={2} spacing="xs">
+            {SALE_METHODS.map((t) => (
+              <Button
+                key={t}
+                size="md"
+                variant={paymentType === t ? 'light' : 'default'}
+                aria-pressed={paymentType === t}
+                onClick={() => setPaymentType(t)}
+              >
+                {SALE_METHOD_LABELS[t]}
+              </Button>
+            ))}
+          </SimpleGrid>
+          {needsMember && (
+            <Text size="sm" c="orange.8">
+              Choose who’s buying: only members can pay later.
+            </Text>
+          )}
           {error && <Text c="red">{error}</Text>}
           <Button
             size="lg"
             fullWidth
             loading={busy}
-            disabled={offline || quantity < 1 || quantity > product.quantity}
+            disabled={offline || needsMember || quantity < 1 || quantity > product.quantity}
             onClick={() => onSell(quantity, paymentType, member?.id ?? null)}
           >
-            Record sale · {lkr(product.sellingPrice * Math.max(quantity, 0))}
+            {credit ? 'Record on credit' : 'Record sale'} · {lkr(product.sellingPrice * Math.max(quantity, 0))}
           </Button>
         </Stack>
       )}
@@ -460,7 +475,7 @@ function Today({ sales, onUndo }: { sales: Sale[] | null; onUndo: (s: Sale) => v
       </Center>
     )
   }
-  const byType = Object.fromEntries(PAYMENT_TYPES.map((t) => [t, 0])) as Record<PaymentType, number>
+  const byType = Object.fromEntries(SALE_METHODS.map((t) => [t, 0])) as Record<SaleMethod, number>
   for (const s of sales) byType[s.paymentType] += s.amount
   const total = sales.reduce((sum, s) => sum + s.amount, 0)
   return (
@@ -470,10 +485,10 @@ function Today({ sales, onUndo }: { sales: Sale[] | null; onUndo: (s: Sale) => v
           <Text fw={600}>Sold on this phone today</Text>
           <Text fw={700}>{lkr(total)}</Text>
         </Group>
-        {PAYMENT_TYPES.filter((t) => byType[t] > 0).map((t) => (
+        {SALE_METHODS.filter((t) => byType[t] > 0).map((t) => (
           <Group key={t} justify="space-between" mt={4}>
             <Text size="sm" c="dimmed">
-              {t === 'CASH' ? 'Cash to hand in' : PAYMENT_TYPE_LABELS[t]}
+              {t === 'CASH' ? 'Cash to hand in' : t === 'CREDIT' ? 'On credit (to pay later)' : SALE_METHOD_LABELS[t]}
             </Text>
             <Text size="sm">{lkr(byType[t])}</Text>
           </Group>
@@ -492,7 +507,7 @@ function Today({ sales, onUndo }: { sales: Sale[] | null; onUndo: (s: Sale) => v
                 {s.productName} × {s.quantity}
               </Text>
               <Text size="sm" c="dimmed">
-                {dayjs(s.paidAt).format('h:mm A')} · {PAYMENT_TYPE_LABELS[s.paymentType]}
+                {dayjs(s.paidAt).format('h:mm A')} · {SALE_METHOD_LABELS[s.paymentType]}
                 {s.memberName && ` · ${s.memberName}`}
               </Text>
             </Box>
@@ -665,7 +680,7 @@ export function StaffApp() {
     setError(null)
   }
 
-  const sell = (quantity: number, paymentType: PaymentType, memberId: string | null) =>
+  const sell = (quantity: number, paymentType: SaleMethod, memberId: string | null) =>
     run(async () => {
       const sale = withDeadline(await staff.sell({ productId: selling!.id, quantity, paymentType, memberId }))
       closeSheets()

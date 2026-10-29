@@ -12,9 +12,10 @@ export const DASHBOARD_MONTHS = 12
 const money = (value: number): number => Math.round(value * 100) / 100
 
 function periodFigures(db: Db, from: string, to: string): PeriodFigures {
-  const takings = db.get<{ memberships: number; store: number }>(sql`
+  const takings = db.get<{ memberships: number; personalTraining: number; store: number }>(sql`
     select coalesce(sum(case when category = 'MEMBERSHIP' then amount end), 0) as memberships,
-      coalesce(sum(case when category <> 'MEMBERSHIP' then amount end), 0) as store
+      coalesce(sum(case when category = 'PERSONAL_TRAINING' then amount end), 0) as personalTraining,
+      coalesce(sum(case when category not in ('MEMBERSHIP', 'PERSONAL_TRAINING') then amount end), 0) as store
     from payments
     where substr(paid_at, 1, 10) between ${from} and ${to}`)!
   const signUps = db.get<{ total: number; renewals: number }>(sql`
@@ -22,8 +23,9 @@ function periodFigures(db: Db, from: string, to: string): PeriodFigures {
     from registrations r
     where r.start_date between ${from} and ${to}`)!
   return {
-    income: money(takings.memberships + takings.store),
+    income: money(takings.memberships + takings.personalTraining + takings.store),
     memberships: money(takings.memberships),
+    personalTraining: money(takings.personalTraining),
     store: money(takings.store),
     newSignUps: signUps.total - signUps.renewals,
     renewals: signUps.renewals

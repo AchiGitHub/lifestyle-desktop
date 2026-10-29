@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import type { DaySummary, MethodTotal } from '../../shared/api'
 import { addDays } from '../../shared/dates'
-import { PAYMENT_TYPES, type PaymentCategory, type PaymentType } from '../../shared/enums'
+import { incomeGroup, PAYMENT_TYPES, type PaymentCategory, type PaymentType } from '../../shared/enums'
 import { dateRangeInput, type DateRangeInput } from '../../shared/schemas'
 import type { Db } from '../db/client'
 import { isRenewal } from './registrations'
@@ -15,6 +15,7 @@ function emptyDay(date: string): DaySummary {
     total: 0,
     count: 0,
     memberships: 0,
+    personalTraining: 0,
     store: 0,
     newSignUps: 0,
     renewals: 0,
@@ -42,8 +43,8 @@ export function daySummaries(db: Db, raw: DateRangeInput): DaySummary[] {
     day.byMethod[p.method].total = money(day.byMethod[p.method].total + p.total)
     day.count += p.n
     day.total = money(day.total + p.total)
-    if (p.category === 'MEMBERSHIP') day.memberships = money(day.memberships + p.total)
-    else day.store = money(day.store + p.total)
+    const group = incomeGroup(p.category)
+    day[group] = money(day[group] + p.total)
   }
 
   // Entered that day (created_at is UTC). A renewal if anyone on it had registered before.
