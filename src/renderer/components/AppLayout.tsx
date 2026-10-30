@@ -42,7 +42,7 @@ const NAV = [
   { to: '/personal-training', label: 'Personal training', icon: IconBarbell },
   { to: '/payments', label: 'Payments', icon: IconCash },
   { to: '/store', label: 'Store', icon: IconShoppingCart },
-  { to: '/credit', label: 'On credit', icon: IconNotebook },
+  { to: '/owed', label: 'Money owed', icon: IconNotebook },
   { to: '/plans', label: 'Plans', icon: IconListDetails }
 ]
 

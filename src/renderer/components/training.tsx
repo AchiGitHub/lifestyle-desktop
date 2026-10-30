@@ -326,6 +326,14 @@ function PtPaymentForm({ pt, onClose }: { pt: PtRegistration; onClose: () => voi
   )
 }
 
+export function PtPaymentModal({ pt, onClose }: { pt: PtRegistration | null; onClose: () => void }) {
+  return (
+    <Modal opened={pt !== null} onClose={onClose} title="Add payment">
+      {pt && <PtPaymentForm pt={pt} onClose={onClose} />}
+    </Modal>
+  )
+}
+
 /** Add payment, Renew, Edit and Delete for one package, each with its own dialog. */
 export function PtActions({ pt }: { pt: PtRegistration }) {
   const [open, setOpen] = useState<'pay' | 'edit' | 'renew' | null>(null)
@@ -372,9 +380,7 @@ export function PtActions({ pt }: { pt: PtRegistration }) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      <Modal opened={open === 'pay'} onClose={close} title="Add payment">
-        {open === 'pay' && <PtPaymentForm pt={pt} onClose={close} />}
-      </Modal>
+      <PtPaymentModal pt={open === 'pay' ? pt : null} onClose={close} />
       <Modal opened={open === 'edit'} onClose={close} title="Edit package">
         {open === 'edit' && <PtEditForm pt={pt} onClose={close} />}
       </Modal>

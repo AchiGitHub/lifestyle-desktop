@@ -82,8 +82,8 @@ function api(): Api {
         await openChat(reminder.phone, reminder.text)
         reminders.recordReminder(db, reminder)
       },
-      sendCredit: async (memberId) => {
-        const reminder = reminders.prepareCreditReminder(db, memberId)
+      sendOwed: async (memberId, includeOlder) => {
+        const reminder = reminders.prepareOwedReminder(db, memberId, includeOlder)
         await openChat(reminder.phone, reminder.text)
         recordCreditReminder(db, memberId)
       }

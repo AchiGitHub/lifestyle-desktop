@@ -116,21 +116,33 @@ export function CreditPaymentModal({ credit, onClose }: { credit: MemberCredit |
   )
 }
 
-/** Opens WhatsApp with what they owe and for which items typed in; staff check it and press send. */
-export function CreditReminderButton({ credit }: { credit: MemberCredit }) {
-  const send = useAction((memberId: string) => api.reminders.sendCredit(memberId), {
+/**
+ * Opens WhatsApp with everything they owe listed (as under Money owed); staff
+ * check it and press send.
+ */
+export function OwedReminderButton({
+  member,
+  remindedAt,
+  includeOlder = false
+}: {
+  member: { memberId: string; mobileNumber: string | null }
+  remindedAt: string | null
+  /** Also list balances that ended over a year ago. */
+  includeOlder?: boolean
+}) {
+  const send = useAction((memberId: string) => api.reminders.sendOwed(memberId, includeOlder), {
     success: 'Opening WhatsApp. Check the message, then press send.'
   })
-  const reachable = whatsappNumber(credit.mobileNumber) !== null
-  const messaged = credit.remindedAt !== null
+  const reachable = whatsappNumber(member.mobileNumber) !== null
+  const messaged = remindedAt !== null
   return (
     <Tooltip
       label={
         !reachable
           ? 'No mobile number that works with WhatsApp'
           : messaged
-            ? `Messaged ${fromNow(credit.remindedAt!)} (${formatDateTime(credit.remindedAt)}). Click to message again.`
-            : 'Open WhatsApp with what they owe typed in'
+            ? `Messaged ${fromNow(remindedAt!)} (${formatDateTime(remindedAt)}). Click to message again.`
+            : 'Open WhatsApp with everything they owe typed in'
       }
       multiline
       maw={260}
@@ -142,7 +154,7 @@ export function CreditReminderButton({ credit }: { credit: MemberCredit }) {
         leftSection={messaged ? <IconCheck size={14} /> : <IconBrandWhatsapp size={14} />}
         loading={send.isPending}
         data-disabled={!reachable || undefined}
-        onClick={!reachable ? (e) => e.preventDefault() : () => send.mutate([credit.memberId])}
+        onClick={!reachable ? (e) => e.preventDefault() : () => send.mutate([member.memberId])}
       >
         {messaged ? 'Messaged' : 'WhatsApp'}
       </Button>

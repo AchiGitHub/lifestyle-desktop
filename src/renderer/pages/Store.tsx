@@ -57,7 +57,7 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
   const members = useMemberOptions()
   const credit = form.values.paymentType === 'CREDIT'
   const sell = useAction((v: SellInput) => api.products.sell(v), {
-    success: credit ? 'Sale recorded. It’s under On credit until they pay.' : 'Sale recorded'
+    success: credit ? 'Sale recorded. It’s under Money owed until they pay.' : 'Sale recorded'
   })
   const { showReceipt } = useReceipt()
   const product = products.find((p) => p.id === form.values.productId)
@@ -113,7 +113,7 @@ function SellForm({ products, productId, onClose }: { products: Product[]; produ
             </Group>
             {credit && (
               <Text size="xs" c="dimmed" mt={4}>
-                Nothing is paid now. It’s added to what they owe, under On credit.
+                Nothing is paid now. It’s added to what they owe, under Money owed.
               </Text>
             )}
           </Paper>
@@ -299,12 +299,12 @@ function Sales() {
     queryKey: ['payments', range.from, range.to, STORE_CATEGORIES, null],
     queryFn: () => api.payments.list({ ...range, categories: STORE_CATEGORIES })
   })
-  // Items taken on credit aren't payments, so they're counted here but listed under On credit.
+  // Paying for items taken on credit is a payment, so it's in the list. What's still to pay isn't: it's under Money owed.
   const credit = useQuery({
     queryKey: ['credit', 'sales', range.from, range.to],
     queryFn: () => api.credit.sales(range)
   })
-  const onCredit = credit.data ?? []
+  const unpaid = (credit.data ?? []).filter((c) => c.owed > 0)
   const total = data.reduce((s, p) => s + p.amount, 0)
   return (
     <Stack>
@@ -314,11 +314,11 @@ function Sales() {
           <Text fw={600}>
             {data.length} sales · {lkr(total)}
           </Text>
-          {onCredit.length > 0 && (
+          {unpaid.length > 0 && (
             <Text size="sm" c="dimmed">
-              Also {onCredit.length} on credit ({lkr(onCredit.reduce((s, c) => s + c.amount, 0))}):{' '}
-              <Anchor component={Link} to="/credit" size="sm">
-                see On credit
+              Also {unpaid.length} on credit ({lkr(unpaid.reduce((s, c) => s + c.owed, 0))} still to pay):{' '}
+              <Anchor component={Link} to="/owed" size="sm">
+                see Money owed
               </Anchor>
             </Text>
           )}

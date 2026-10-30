@@ -14,8 +14,9 @@ import { deleteMembers, getMember, mergeMembers } from '../src/main/services/mem
 import { deletePayment, listPayments } from '../src/main/services/payments'
 import { deviceSalesToday, sellProduct, undoSale } from '../src/main/services/products'
 import { getReceipt } from '../src/main/services/receipts'
-import { prepareCreditReminder } from '../src/main/services/reminders'
+import { prepareOwedReminder } from '../src/main/services/reminders'
 import { dashboardReport } from '../src/main/services/reports'
+import { STORE_CATEGORIES } from '../src/shared/enums'
 import { makeDb, seedMember, seedProduct } from './helpers'
 
 let db: Db
@@ -96,6 +97,17 @@ describe('paying it off', () => {
       expect.objectContaining({ id, amount: 1000, category: 'STORE_CREDIT', description: 'Store items on credit', memberName: 'Nimal Perera' })
     ])
     expect(dashboardReport(db, '2026-10').months.at(-1)!).toMatchObject({ store: 1000, income: 1000 })
+  })
+
+  it('shows under Store → Sales once paid, adding up to the store income', () => {
+    sellProduct(db, { productId: yeti, quantity: 1, paymentType: 'CASH' })
+    expect(listPayments(db, { ...october, categories: STORE_CATEGORIES }).map((p) => p.amount)).toEqual([350])
+
+    const id = payCredit(db, { memberId: nimal, amount: 1000, paymentType: 'CASH' })
+    const sales = listPayments(db, { ...october, categories: STORE_CATEGORIES })
+    expect(sales.map((p) => p.id)).toContain(id)
+    expect(sales.reduce((s, p) => s + p.amount, 0)).toBe(1350)
+    expect(dashboardReport(db, '2026-10').months.at(-1)!.store).toBe(1350)
   })
 
   it('gives a receipt that says what is still to pay, the same when printed again', () => {
@@ -199,7 +211,7 @@ describe('reminder', () => {
     at(22)
     onCredit(whey, 1)
     payCredit(db, { memberId: nimal, amount: 200, paymentType: 'CASH' })
-    const { phone, text } = prepareCreditReminder(db, nimal)
+    const { phone, text } = prepareOwedReminder(db, nimal)
     expect(phone).toBe('94771234567')
     expect(text).toContain('Hi Nimal')
     expect(text).toContain('Rs. 12,500 to pay')
@@ -207,9 +219,9 @@ describe('reminder', () => {
   })
 
   it("isn't sent when they owe nothing or have no usable number", () => {
-    expect(() => prepareCreditReminder(db, nimal)).toThrow(/doesn’t owe anything/)
+    expect(() => prepareOwedReminder(db, nimal)).toThrow(/doesn’t owe anything/)
     const noPhone = seedMember(db, { firstName: 'Saman', mobileNumber: '123' })
     onCredit(yeti, 1, noPhone)
-    expect(() => prepareCreditReminder(db, noPhone)).toThrow(/can't be used for WhatsApp/)
+    expect(() => prepareOwedReminder(db, noPhone)).toThrow(/can't be used for WhatsApp/)
   })
 })

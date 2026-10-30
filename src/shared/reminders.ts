@@ -9,7 +9,7 @@ export const DEFAULT_TEMPLATES: Record<ReminderKind, string> = {
   BALANCE:
     'Hi {name}, this is Lifestyle Fitness Studio. {balance} is still due on your {plan} membership. Please settle it at the front desk on your next visit. Thank you!',
   CREDIT:
-    'Hi {name}, this is Lifestyle Fitness Studio. You have {balance} to pay for items from our store:\n{items}\n\nPlease settle it at the front desk on your next visit. Thank you!'
+    'Hi {name}, this is Lifestyle Fitness Studio. You have {balance} to pay:\n{items}\n\nPlease settle it at the front desk on your next visit. Thank you!'
 }
 
 export const PLACEHOLDERS = ['name', 'plan', 'endDate', 'balance', 'packages', 'items'] as const
@@ -20,7 +20,7 @@ export interface PackagePrice {
   price: number
 }
 
-/** An item still to pay for, as {items} lists it. */
+/** A store item still to pay for, as {items} lists it. */
 export interface CreditLine {
   soldAt: string
   productName: string
@@ -29,12 +29,22 @@ export interface CreditLine {
   owed: number
 }
 
-/** Enough lines to recognise what they took, without making the link too long for WhatsApp. */
+/** A membership or personal training package still to pay for, as {items} lists it. */
+export interface DebtLine {
+  for: string
+  owed: number
+}
+
+/** Enough lines to recognise what they owe for, without making the link too long for WhatsApp. */
 const MAX_ITEM_LINES = 10
 
-/** One line per item, oldest first: "• 12 Oct: Yeti Isotonic × 2 – Rs. 700". */
-export function creditLines(items: CreditLine[]): string {
+/**
+ * One line for each thing owed, in the order given: "• One Month membership from 3 Oct 2026 – Rs. 6,000",
+ * "• 12 Oct: Yeti Isotonic × 2 – Rs. 700".
+ */
+export function owedLines(items: Array<CreditLine | DebtLine>): string {
   const lines = items.slice(0, MAX_ITEM_LINES).map((i) => {
+    if (!('productName' in i)) return `• ${i.for} – ${rupees(i.owed)}`
     const left = i.owed < i.amount ? ` (${rupees(i.owed)} left of ${rupees(i.amount)})` : ` – ${rupees(i.amount)}`
     return `• ${shortDate(i.soldAt)}: ${i.productName} × ${i.quantity}${left}`
   })
@@ -57,7 +67,7 @@ export function reminderValues(v: {
   endDate: string
   balance: number
   packages: PackagePrice[]
-  items?: CreditLine[]
+  items?: Array<CreditLine | DebtLine>
 }): ReminderValues {
   const name = v.firstName.trim()
   return {
@@ -67,7 +77,7 @@ export function reminderValues(v: {
     endDate: longDate(v.endDate),
     balance: rupees(v.balance),
     packages: packageLines(v.packages),
-    items: creditLines(v.items ?? [])
+    items: owedLines(v.items ?? [])
   }
 }
 

@@ -236,6 +236,36 @@ export interface MemberCredit {
   lastPaidAt: string | null
 }
 
+/** One thing a member still has to pay for, with what its payment dialog needs. */
+export type OwedDebt = {
+  owed: number
+  /** The start date; for store items, when the oldest still unpaid was taken. */
+  since: string
+  /** A membership or package that ended over a year ago: only listed when asked for. */
+  older: boolean
+} & (
+  | { kind: 'MEMBERSHIP'; registration: Registration }
+  | { kind: 'PERSONAL_TRAINING'; pt: PtRegistration }
+  | { kind: 'STORE_CREDIT'; credit: MemberCredit }
+)
+
+/**
+ * Everything a member owes. A shared membership (a couple's) is listed once,
+ * under whoever on it has a WhatsApp number.
+ */
+export interface MemberOwed {
+  memberId: string
+  firstName: string
+  lastName: string
+  mobileNumber: string | null
+  /** Oldest first. */
+  debts: OwedDebt[]
+  /** When a WhatsApp reminder about money owed was last opened (UTC). */
+  remindedAt: string | null
+  /** When they last paid towards any of it (local time). */
+  lastPaidAt: string | null
+}
+
 export interface MemberDetail {
   member: Member
   registrations: Registration[]
@@ -659,10 +689,13 @@ export interface Api {
     /** A 'YYYY-MM' month: packages sold per trainer and their commission. */
     commission(month: string): Promise<TrainerCommission[]>
   }
+  /** Money still to pay, for memberships, personal training and store items. */
+  owed: {
+    /** Everyone who owes, most owed first, including balances that ended over a year ago. */
+    list(): Promise<MemberOwed[]>
+  }
   /** Store items members took to pay for later. */
   credit: {
-    /** Everyone who owes, most owed first. */
-    owed(): Promise<MemberCredit[]>
     sales(range: DateRangeInput): Promise<CreditSale[]>
     /** Returns the payment's id, for its receipt. */
     pay(input: CreditPaymentInput): Promise<string>
@@ -692,8 +725,8 @@ export interface Api {
     save(input: ReminderSettingsInput): Promise<void>
     /** Opens WhatsApp with the message filled in; staff check it and press send. */
     send(input: ReminderInput): Promise<void>
-    /** The same, about what a member owes for store items. */
-    sendCredit(memberId: string): Promise<void>
+    /** The same, listing everything a member owes; balances that ended over a year ago only with `includeOlder`. */
+    sendOwed(memberId: string, includeOlder?: boolean): Promise<void>
   }
   receipts: {
     get(paymentId: string): Promise<Receipt>

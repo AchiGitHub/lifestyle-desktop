@@ -34,6 +34,7 @@ import { z } from 'zod'
 import type { ReceiptSettings, ReminderSettings } from '@shared/api'
 import { addDays, todayIso } from '@shared/dates'
 import { REMINDER_KIND_LABELS, REMINDER_KINDS, type ReminderKind } from '@shared/enums'
+import { longDate } from '@shared/format'
 import { DEFAULT_TEMPLATES, fillTemplate, reminderValues, type PackagePrice } from '@shared/reminders'
 import {
   passwordInput,
@@ -319,6 +320,7 @@ function LocalCard() {
 }
 
 const exampleItems = [
+  { for: `One Month membership from ${longDate(addDays(todayIso(), -20))}`, owed: 5000 },
   { soldAt: addDays(todayIso(), -12), productName: 'Yeti Isotonic', quantity: 2, amount: 700, owed: 700 },
   { soldAt: addDays(todayIso(), -3), productName: 'Whey Protein 1kg', quantity: 1, amount: 12000, owed: 12000 }
 ]
@@ -328,7 +330,7 @@ const example = (kind: ReminderKind, packages: PackagePrice[]) =>
     firstName: 'Nimal',
     plan: 'One Month',
     endDate: addDays(todayIso(), kind === 'EXPIRED' ? -5 : 5),
-    balance: kind === 'CREDIT' ? 12700 : 5000,
+    balance: kind === 'CREDIT' ? 17700 : 5000,
     packages,
     items: exampleItems
   })
@@ -350,11 +352,12 @@ function RemindersForm({ settings }: { settings: ReminderSettings }) {
         <Title order={4}>WhatsApp reminders</Title>
       </Group>
       <Text size="sm" mb="md">
-        The WhatsApp buttons on Renewals due, Not renewed, On credit and a member’s unpaid registration open a chat with
+        The WhatsApp buttons on Renewals due, Not renewed, Money owed and a member’s unpaid registration open a chat with
         one of these messages typed in; check it, then press send. <Code>{'{name}'}</Code>, <Code>{'{plan}'}</Code>,{' '}
         <Code>{'{endDate}'}</Code> and <Code>{'{balance}'}</Code> are filled in for each member, and{' '}
-        <Code>{'{packages}'}</Code> becomes a price list of the packages ticked when the reminder is sent. In the store
-        credit message, <Code>{'{balance}'}</Code> is what they owe and <Code>{'{items}'}</Code> lists the items.
+        <Code>{'{packages}'}</Code> becomes a price list of the packages ticked when the reminder is sent. In the money
+        owed message, <Code>{'{balance}'}</Code> is everything they owe and <Code>{'{items}'}</Code> lists what for:
+        memberships, personal training and store items.
       </Text>
       {!settings.whatsappDesktop && (
         <Alert color="gray" icon={<IconInfoCircle />} mb="md">

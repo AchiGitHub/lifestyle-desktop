@@ -4,6 +4,7 @@ import type { Db } from '../db/client'
 import * as credit from './credit'
 import * as joining from './joining'
 import * as members from './members'
+import * as owed from './owed'
 import * as payments from './payments'
 import * as plans from './plans'
 import * as products from './products'
@@ -125,8 +126,10 @@ export function createServices(db: Db): DomainApi {
       countStock: sync((d: Db, input: StockInput) => products.countStock(d, input)),
       stockChanges: sync(products.listStockChanges)
     },
+    owed: {
+      list: sync((d: Db) => owed.whoOwes(d))
+    },
     credit: {
-      owed: sync(credit.owedList),
       sales: sync(credit.listCreditSales),
       pay: sync(credit.payCredit),
       deleteSale: sync(credit.deleteCreditSale)

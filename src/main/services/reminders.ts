@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import type { ReminderSettings, ReminderTemplates } from '../../shared/api'
+import type { OwedDebt, ReminderSettings, ReminderTemplates } from '../../shared/api'
 import { addDays, todayIso } from '../../shared/dates'
 import { REMINDER_KINDS, type ReminderKind } from '../../shared/enums'
+import { longDate } from '../../shared/format'
 import {
   DEFAULT_TEMPLATES,
   fillTemplate,
   reminderValues,
   whatsappNumber,
+  type CreditLine,
+  type DebtLine,
   type PackagePrice
 } from '../../shared/reminders'
 import {
@@ -17,9 +20,9 @@ import {
   type ReminderSettingsInput
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
-import { membershipTypes, reminders } from '../db/schema'
-import { memberCredit } from './credit'
+import { members, membershipTypes, reminders } from '../db/schema'
 import { AppError, nowUtc } from './errors'
+import { memberOwed } from './owed'
 import { getRegistration } from './registrations'
 import { putSetting, readSettings } from './settings'
 
@@ -134,23 +137,41 @@ export function prepareReminder(db: Db, raw: ReminderInput): PreparedReminder {
   }
 }
 
-/** The WhatsApp number and message about what a member owes for store items. */
-export function prepareCreditReminder(db: Db, memberId: string): { phone: string; text: string } {
-  const credit = memberCredit(db, memberId)
-  if (credit.owed <= 0) throw new AppError(`${credit.firstName} doesn’t owe anything for store items.`)
-  const phone = whatsappNumber(credit.mobileNumber)
+/** How a membership or package reads in the list of what they owe. */
+function debtLine(debt: OwedDebt): Array<CreditLine | DebtLine> {
+  switch (debt.kind) {
+    case 'MEMBERSHIP':
+      return [{ for: `${debt.registration.membershipTypeName} membership from ${longDate(debt.registration.startDate)}`, owed: debt.owed }]
+    case 'PERSONAL_TRAINING':
+      return [{ for: `Personal training, ${debt.pt.packageName} with ${debt.pt.trainerName}`, owed: debt.owed }]
+    case 'STORE_CREDIT':
+      return debt.credit.items
+  }
+}
+
+/**
+ * The WhatsApp number and message listing what a member owes, as Money owed
+ * lists it; balances that ended over a year ago only with `includeOlder`.
+ */
+export function prepareOwedReminder(db: Db, memberId: string, includeOlder = false): { phone: string; text: string } {
+  const member = db.select().from(members).where(eq(members.id, memberId)).get()
+  if (!member) throw new AppError('That member no longer exists.')
+  const debts = (memberOwed(db, memberId)?.debts ?? []).filter((d) => includeOlder || !d.older)
+  if (debts.length === 0) throw new AppError(`${member.firstName} doesn’t owe anything.`)
+  const phone = whatsappNumber(member.mobileNumber)
   if (!phone) {
     throw new AppError(
-      `${credit.firstName}'s mobile number (${credit.mobileNumber || 'none'}) can't be used for WhatsApp. Check it in their details.`
+      `${member.firstName}'s mobile number (${member.mobileNumber || 'none'}) can't be used for WhatsApp. Check it in their details.`
     )
   }
+  const membership = debts.find((d) => d.kind === 'MEMBERSHIP')
   const values = reminderValues({
-    firstName: credit.firstName,
-    plan: '',
+    firstName: member.firstName,
+    plan: membership?.kind === 'MEMBERSHIP' ? membership.registration.membershipTypeName : '',
     endDate: todayIso(),
-    balance: credit.owed,
+    balance: Math.round(debts.reduce((sum, d) => sum + d.owed, 0) * 100) / 100,
     packages: [],
-    items: credit.items
+    items: debts.flatMap(debtLine)
   })
   return { phone, text: fillTemplate(reminderTemplates(db).CREDIT, values) }
 }

@@ -36,7 +36,7 @@ import { GENDER_LABELS, PAYMENT_CATEGORY_LABELS, PAYMENT_TYPE_LABELS } from '@sh
 import { api, useAction } from '../lib/api'
 import { formatDate, formatDateTime, fromNow, fullName, lkr, oneDecimal } from '../lib/format'
 import { useDeskCheckIn } from './checkIns'
-import { CreditItems, CreditPaymentModal, CreditReminderButton } from './credit'
+import { CreditItems, CreditPaymentModal, OwedReminderButton } from './credit'
 import { PtActions, PtSellModal, PtStateBadge } from './training'
 import { MemberFormModal } from './MemberFormModal'
 import { useReceipt } from './ReceiptDialog'
@@ -263,7 +263,7 @@ function MemberDetailView({ id, onOpenMember }: { id: string; onOpenMember: (id:
                 Owes {lkr(credit.owed)}
               </Text>
               <Group gap="xs">
-                <CreditReminderButton credit={credit} />
+                <OwedReminderButton member={credit} remindedAt={credit.remindedAt} />
                 <Button size="xs" onClick={() => setPayingCredit(credit)}>
                   Take payment
                 </Button>

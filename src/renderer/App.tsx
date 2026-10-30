@@ -7,7 +7,7 @@ import { MemberDrawerProvider } from './components/MemberDrawer'
 import { ReceiptProvider } from './components/ReceiptDialog'
 import { api } from './lib/api'
 import { CheckIns } from './pages/CheckIns'
-import { Credit } from './pages/Credit'
+import { MoneyOwed } from './pages/Owed'
 import { Dashboard } from './pages/Dashboard'
 import { Duplicates } from './pages/Duplicates'
 import { Expired } from './pages/Expired'
@@ -63,7 +63,7 @@ export function App() {
             <Route path="/personal-training" element={<PersonalTraining />} />
             <Route path="/payments" element={<Payments />} />
             <Route path="/store" element={<Store />} />
-            <Route path="/credit" element={<Credit />} />
+            <Route path="/owed" element={<MoneyOwed />} />
             <Route path="/plans" element={<Plans />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

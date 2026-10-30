@@ -65,7 +65,8 @@ export const PAYMENT_CATEGORY_LABELS: Record<PaymentCategory, string> = {
   OTHER: 'Other sales',
   STORE_CREDIT: 'Credit paid'
 }
-export const STORE_CATEGORIES: PaymentCategory[] = ['SUPPLEMENT', 'BEVERAGE', 'OTHER']
+/** Money taken for the store, so Store → Sales adds up to the store income everywhere else. */
+export const STORE_CATEGORIES: PaymentCategory[] = ['SUPPLEMENT', 'BEVERAGE', 'OTHER', 'STORE_CREDIT']
 
 /** Which income heading a payment is under: memberships, personal training, or the store (credit paid included). */
 export function incomeGroup(category: PaymentCategory): 'memberships' | 'personalTraining' | 'store' {
@@ -88,14 +89,17 @@ export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
   NO_PLAN: 'No plan'
 }
 
-/** What a WhatsApp reminder is about. CREDIT is about the member's store credit, not a registration. */
+/**
+ * What a WhatsApp reminder is about. CREDIT is everything a member owes
+ * (memberships, personal training, store items), not one registration.
+ */
 export const REMINDER_KINDS = ['EXPIRING', 'EXPIRED', 'BALANCE', 'CREDIT'] as const
 export type ReminderKind = (typeof REMINDER_KINDS)[number]
 export const REMINDER_KIND_LABELS: Record<ReminderKind, string> = {
   EXPIRING: 'Membership ending soon',
   EXPIRED: 'Membership has ended',
   BALANCE: 'Balance still to pay',
-  CREDIT: 'Store items on credit'
+  CREDIT: 'Money owed'
 }
 
 export function durationLabel(duration: number, type: DurationType): string {

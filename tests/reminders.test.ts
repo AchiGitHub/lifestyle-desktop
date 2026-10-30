@@ -16,7 +16,7 @@ import {
 import { addDays, todayIso } from '../src/shared/dates'
 import {
   DEFAULT_TEMPLATES,
-  creditLines,
+  owedLines,
   fillTemplate,
   packageLines,
   reminderValues,
@@ -88,12 +88,21 @@ describe('message templates', () => {
       amount: 700,
       owed
     })
-    expect(creditLines([item(3, 200), item(12)])).toBe(
+    expect(owedLines([item(3, 200), item(12)])).toBe(
       '• 3 Oct: Yeti Isotonic × 2 (Rs. 200 left of Rs. 700)\n• 12 Oct: Yeti Isotonic × 2 – Rs. 700'
     )
-    const lines = creditLines(Array.from({ length: 13 }, (_, i) => item(i + 1))).split('\n')
+    const lines = owedLines(Array.from({ length: 13 }, (_, i) => item(i + 1))).split('\n')
     expect(lines).toHaveLength(11)
     expect(lines[10]).toBe('• and 3 more')
+  })
+
+  it('lists a membership or package owed for as one line, in the order given', () => {
+    expect(
+      owedLines([
+        { for: 'One Month membership from 3 Oct 2026', owed: 6000 },
+        { soldAt: '2026-10-12T10:00:00', productName: 'Yeti Isotonic', quantity: 2, amount: 700, owed: 700 }
+      ])
+    ).toBe('• One Month membership from 3 Oct 2026 – Rs. 6,000\n• 12 Oct: Yeti Isotonic × 2 – Rs. 700')
   })
 
   it('fills known placeholders and leaves anything else alone', () => {

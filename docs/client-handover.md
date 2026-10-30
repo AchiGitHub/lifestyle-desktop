@@ -58,10 +58,10 @@ Double-click **Lifestyle** on the desktop and type the password. Always use the 
 | See trainers' commission | **Personal training** → **Commission**: each trainer's packages starting that month, what the member has paid, and the commission. **Sessions** shows who trained whom |
 | Give someone longer to use their sessions | **Personal training** → **…** on their package → **Edit** → move **Use by** on |
 | Sell a drink or supplement | **Store** → **Sell**. Choose the member under **Bought by** (leave it empty for a walk-in); it then shows in their details |
-| Let a member pay later | When selling, choose **On credit** and the member (walk-ins can't). Nothing is paid yet, so it isn't in the takings until they pay |
-| See who owes for store items, and remind them | **On credit**: everyone who owes, how much and for what. **WhatsApp** opens a reminder listing the items. The member's details show it too |
-| Take money for store items on credit | **On credit** → **Take payment** (or **Take payment** in the member's details). Any amount up to what they owe; it pays off the oldest items first, and the receipt shows what's left |
-| Fix a credit sale entered by mistake | **On credit** → **Credit sales** → bin icon. It comes off what they owe and the items go back into stock |
+| Let a member pay later | When selling, choose **On credit** and the member (walk-ins can't). Nothing is paid yet, so it isn't in the takings until they pay. Once they pay, it's under **Store** → **Sales** in the month the money came in |
+| See who owes money, and remind them | **Money owed**: everyone still to pay for a membership, personal training or store items, how much and for what. **WhatsApp** opens one reminder listing it all. Old balances (ended over a year ago) show when you switch on **Show balances that ended over a year ago** |
+| Take money someone owes | **Money owed** → **Take payment**. If they owe for more than one thing, choose which. For store items it's any amount up to what they owe, paying off the oldest items first, and the receipt shows what's left |
+| Fix a credit sale entered by mistake | **Money owed** → **Store credit sales** → bin icon. It comes off what they owe and the items go back into stock |
 | Record a delivery, or correct stock after counting the shelf | **Store** → **Stock** on the product → **Stock arrived** or **Counted the shelf**. **Store → Stock changes** lists every change and who made it |
 | Let an instructor sell or update stock on their phone | **Settings** → **Instructor phones** → **Pair a phone**, type their name, then they scan the code with their phone on the gym Wi-Fi. Their sales show under **Store → Sales** with their name, and a notice pops up here as they happen |
 | Stop a phone (lost, or the instructor left) | **Settings** → **Instructor phones** → bin icon next to their name. Their past sales keep their name |

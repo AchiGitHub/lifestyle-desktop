@@ -290,7 +290,7 @@ const packageIds = z.array(z.string()).max(8, 'List at most 8 packages')
 export const reminderInput = z.object({
   registrationId: id('Choose a registration'),
   memberId: id('Choose a member'),
-  // Store credit isn't about a registration: that's reminders.sendCredit.
+  // Money owed isn't about one registration: that's reminders.sendOwed.
   kind: z.enum(REMINDER_KINDS).exclude(['CREDIT']),
   /** The plans {packages} lists in this message; left out, the ones ticked by default. */
   packageIds: packageIds.optional()
