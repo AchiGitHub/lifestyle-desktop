@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import {
+  CLASS_COLORS,
   DURATION_TYPES,
   GENDERS,
   PAYMENT_CATEGORIES,
@@ -148,6 +149,88 @@ export const ptRegistrations = sqliteTable(
     index('pt_registrations_trainer_idx').on(t.trainerId),
     index('pt_registrations_start_idx').on(t.startDate),
     index('pt_registrations_end_idx').on(t.endDate)
+  ]
+)
+
+/**
+ * The days a package's sessions are planned for, chosen by hand or filled in by
+ * a repeat. Only a check-in uses up a session, so a missed day costs nothing.
+ */
+export const ptDays = sqliteTable(
+  'pt_days',
+  {
+    id: text('id').primaryKey(),
+    ptRegistrationId: text('pt_registration_id')
+      .notNull()
+      .references(() => ptRegistrations.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    /** Local time 'HH:mm'. */
+    startTime: text('start_time').notNull(),
+    minutes: integer('minutes').notNull(),
+    ...timestamps()
+  },
+  (t) => [
+    index('pt_days_date_idx').on(t.date),
+    uniqueIndex('pt_days_package_date_idx').on(t.ptRegistrationId, t.date)
+  ]
+)
+
+/** What can go on the calendar: Zumba, HIIT and so on. */
+export const classTypes = sqliteTable('class_types', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  color: text('color', { enum: CLASS_COLORS }).notNull(),
+  /** Fills in the length of a new class. */
+  minutes: integer('minutes').notNull(),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  ...timestamps()
+})
+
+/** A class that runs every week on the same days at the same time. */
+export const classSeries = sqliteTable('class_series', {
+  id: text('id').primaryKey(),
+  classTypeId: text('class_type_id')
+    .notNull()
+    .references(() => classTypes.id, { onDelete: 'restrict' }),
+  /** Days of the week as Date.getDay() numbers: '1,3' is Monday and Wednesday. */
+  weekdays: text('weekdays').notNull(),
+  /** Local time 'HH:mm'. */
+  startTime: text('start_time').notNull(),
+  minutes: integer('minutes').notNull(),
+  trainerId: text('trainer_id').references(() => trainers.id, { onDelete: 'set null' }),
+  startsOn: text('starts_on').notNull(),
+  /** The last day it runs; null while it keeps going. */
+  endsOn: text('ends_on'),
+  ...timestamps()
+})
+
+/**
+ * One class on one day, a one-off or from a series. Each is a row of its own so
+ * a date can be cancelled or changed by itself. A series' rows are added as
+ * their dates are looked at (see fillSeries).
+ */
+export const classSessions = sqliteTable(
+  'class_sessions',
+  {
+    id: text('id').primaryKey(),
+    classTypeId: text('class_type_id')
+      .notNull()
+      .references(() => classTypes.id, { onDelete: 'restrict' }),
+    /** Null for a one-off. When a series is deleted its past classes stay, as one-offs. */
+    seriesId: text('series_id').references(() => classSeries.id, { onDelete: 'set null' }),
+    date: text('date').notNull(),
+    /** Local time 'HH:mm'. */
+    startTime: text('start_time').notNull(),
+    minutes: integer('minutes').notNull(),
+    trainerId: text('trainer_id').references(() => trainers.id, { onDelete: 'set null' }),
+    cancelled: integer('cancelled', { mode: 'boolean' }).notNull().default(false),
+    /** Changed or cancelled by itself, so editing the series leaves it alone. */
+    changed: integer('changed', { mode: 'boolean' }).notNull().default(false),
+    ...timestamps()
+  },
+  (t) => [
+    index('class_sessions_date_idx').on(t.date),
+    uniqueIndex('class_sessions_series_date_idx').on(t.seriesId, t.date)
   ]
 )
 

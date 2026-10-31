@@ -6,6 +6,7 @@ import { AppLayout } from './components/AppLayout'
 import { MemberDrawerProvider } from './components/MemberDrawer'
 import { ReceiptProvider } from './components/ReceiptDialog'
 import { api } from './lib/api'
+import { Calendar } from './pages/Calendar'
 import { CheckIns } from './pages/CheckIns'
 import { MoneyOwed } from './pages/Owed'
 import { Dashboard } from './pages/Dashboard'
@@ -53,6 +54,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/check-ins" element={<CheckIns />} />
             <Route path="/members" element={<Members />} />
             <Route path="/members/duplicates" element={<Duplicates />} />

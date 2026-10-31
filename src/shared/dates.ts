@@ -86,3 +86,23 @@ export function monthRange(iso: IsoDate): { from: IsoDate; to: IsoDate } {
   const [y, m] = iso.split('-').map(Number)
   return { from: ymd(y, m - 1, 1), to: ymd(y, m - 1, daysInMonth(y, m - 1)) }
 }
+
+/** The dates on the chosen days of the week between two dates, earliest first. */
+export function weeklyDates(from: IsoDate, to: IsoDate, weekdays: number[]): IsoDate[] {
+  const dates: IsoDate[] = []
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    if (weekdays.includes(parseIsoDate(d).getDay())) dates.push(d)
+  }
+  return dates
+}
+
+/** Days since the Monday of that week. */
+const daysIntoWeek = (iso: IsoDate): number => (parseIsoDate(iso).getDay() + 6) % 7
+
+/** The days a calendar shows for a 'YYYY-MM' month: whole weeks, Monday to Sunday. */
+export function monthGrid(month: string): IsoDate[] {
+  const { from, to } = monthRange(`${month}-01`)
+  const first = addDays(from, -daysIntoWeek(from))
+  const last = addDays(to, 6 - daysIntoWeek(to))
+  return Array.from({ length: daysBetween(first, last) + 1 }, (_, i) => addDays(first, i))
+}

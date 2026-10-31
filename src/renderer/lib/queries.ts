@@ -16,5 +16,9 @@ export const useTrainers = () => useQuery({ queryKey: ['trainers'], queryFn: () 
 
 export const usePtPackages = () => useQuery({ queryKey: ['ptPackages'], queryFn: () => api.ptPackages.list() })
 
+export const useClassTypes = () => useQuery({ queryKey: ['classTypes'], queryFn: () => api.classTypes.list() })
+
+export const useClassSeries = () => useQuery({ queryKey: ['classSeries'], queryFn: () => api.classSeries.list() })
+
 export const useBackupStatus = () =>
   useQuery({ queryKey: ['backupStatus'], queryFn: () => api.backup.status(), refetchInterval: 60_000 })

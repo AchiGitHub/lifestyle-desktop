@@ -1,6 +1,8 @@
 import type { Api } from '../../shared/api'
 import type { SellInput, StockInput } from '../../shared/schemas'
 import type { Db } from '../db/client'
+import * as calendar from './calendar'
+import * as classes from './classes'
 import * as credit from './credit'
 import * as joining from './joining'
 import * as members from './members'
@@ -83,6 +85,29 @@ export function createServices(db: Db): DomainApi {
       setArchived: sync(training.setTrainerArchived),
       delete: sync(training.deleteTrainer)
     },
+    classTypes: {
+      list: sync(classes.listClassTypes),
+      create: sync(classes.createClassType),
+      update: sync(classes.updateClassType),
+      setArchived: sync(classes.setClassTypeArchived),
+      delete: sync(classes.deleteClassType)
+    },
+    classSeries: {
+      list: sync(classes.listClassSeries),
+      create: sync(classes.createClassSeries),
+      update: sync(classes.updateClassSeries),
+      delete: sync(classes.deleteClassSeries)
+    },
+    classSessions: {
+      create: sync(classes.createClassSession),
+      update: sync(classes.updateClassSession),
+      setCancelled: sync(classes.setClassSessionCancelled),
+      delete: sync(classes.deleteClassSession)
+    },
+    calendar: {
+      days: sync(calendar.calendarDays),
+      birthdays: sync(calendar.birthdaysOn)
+    },
     ptPackages: {
       list: sync(training.listPtPackages),
       create: sync(training.createPtPackage),
@@ -97,7 +122,13 @@ export function createServices(db: Db): DomainApi {
       delete: sync(training.deletePtRegistration),
       addPayment: sync(training.addPtPayment),
       sessions: sync(training.listPtSessions),
-      commission: sync(training.commissionReport)
+      commission: sync(training.commissionReport),
+      days: sync(training.upcomingPtDays),
+      setDays: sync(training.setPtDays),
+      addDay: sync(training.addPtDay),
+      updateDay: sync(training.updatePtDay),
+      deleteDay: sync(training.deletePtDay),
+      dayClashes: sync(training.ptDayClashes)
     },
     registrations: {
       list: sync(registrations.listRegistrations),
@@ -108,7 +139,8 @@ export function createServices(db: Db): DomainApi {
       undismiss: sync((d: Db, ids: string[]) => registrations.setDismissed(d, ids, false)),
       delete: sync(registrations.deleteRegistrations),
       expiring: sync(registrations.expiringRegistrations),
-      expired: sync(registrations.expiredRegistrations)
+      expired: sync(registrations.expiredRegistrations),
+      starting: sync(registrations.startingRegistrations)
     },
     payments: {
       list: sync(payments.listPayments),

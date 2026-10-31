@@ -29,6 +29,82 @@ function Count({ label, value }: { label: string; value: number }) {
   )
 }
 
+export function VisitsTable({ records, fetching }: { records: Visit[]; fetching?: boolean }) {
+  const { openMember } = useMemberDrawer()
+  const remove = useAction((id: string) => api.visits.delete(id), { success: 'Check-in removed' })
+  return (
+    <AppTable<Visit>
+      records={records}
+      fetching={fetching}
+      sort={{ columnAccessor: 'checkedInAt', direction: 'desc' }}
+      emptyText="No check-ins on this day"
+      columns={[
+        {
+          accessor: 'checkedInAt',
+          title: 'Time',
+          sortable: true,
+          render: (v) => dayjs(v.checkedInAt).format('h:mm A')
+        },
+        {
+          accessor: 'memberName',
+          title: 'Member',
+          sortable: true,
+          render: (v) => (
+            <button className="link-button" onClick={() => openMember(v.memberId)}>
+              {v.memberName}
+            </button>
+          )
+        },
+        { accessor: 'status', title: 'Status', render: (v) => <VisitStatusBadge status={v.status} /> },
+        {
+          accessor: 'trainerName',
+          title: 'For',
+          render: (v) =>
+            v.trainerName ? (
+              <Badge variant="light" color="pink">
+                PT · {v.trainerName}
+              </Badge>
+            ) : (
+              <Text size="sm" c="dimmed">
+                Gym
+              </Text>
+            )
+        },
+        { accessor: 'source', title: 'Where', render: (v) => VISIT_SOURCE_LABELS[v.source] },
+        {
+          accessor: 'actions',
+          title: '',
+          textAlign: 'right',
+          width: 60,
+          render: (v) => (
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              aria-label="Remove check-in"
+              onClick={() =>
+                modals.openConfirmModal({
+                  title: 'Remove this check-in?',
+                  children: (
+                    <Text size="sm">
+                      {v.memberName} at {dayjs(v.checkedInAt).format('h:mm A')}. Use this for a wrong tap at the
+                      door.{v.trainerName && ' The personal training session is given back.'}
+                    </Text>
+                  ),
+                  labels: { confirm: 'Remove', cancel: 'Cancel' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: () => remove.mutate([v.id])
+                })
+              }
+            >
+              <IconTrash size={16} />
+            </ActionIcon>
+          )
+        }
+      ]}
+    />
+  )
+}
+
 export function CheckIns() {
   const [date, setDate] = useState(todayIso())
   const { data = [], isPending } = useQuery({
@@ -37,9 +113,7 @@ export function CheckIns() {
     // Door check-ins also refresh this when they arrive; this is a fallback.
     refetchInterval: 30_000
   })
-  const { openMember } = useMemberDrawer()
   const checkIn = useDeskCheckIn()
-  const remove = useAction((id: string) => api.visits.delete(id), { success: 'Check-in removed' })
 
   return (
     <>
@@ -64,75 +138,7 @@ export function CheckIns() {
         <Count label="Needed the desk" value={data.filter((v) => v.status !== 'OK').length} />
         <Count label="Personal training" value={data.filter((v) => v.ptRegistrationId).length} />
       </SimpleGrid>
-      <AppTable<Visit>
-        records={data}
-        fetching={isPending}
-        sort={{ columnAccessor: 'checkedInAt', direction: 'desc' }}
-        emptyText="No check-ins on this day"
-        columns={[
-          {
-            accessor: 'checkedInAt',
-            title: 'Time',
-            sortable: true,
-            render: (v) => dayjs(v.checkedInAt).format('h:mm A')
-          },
-          {
-            accessor: 'memberName',
-            title: 'Member',
-            sortable: true,
-            render: (v) => (
-              <button className="link-button" onClick={() => openMember(v.memberId)}>
-                {v.memberName}
-              </button>
-            )
-          },
-          { accessor: 'status', title: 'Status', render: (v) => <VisitStatusBadge status={v.status} /> },
-          {
-            accessor: 'trainerName',
-            title: 'For',
-            render: (v) =>
-              v.trainerName ? (
-                <Badge variant="light" color="pink">
-                  PT · {v.trainerName}
-                </Badge>
-              ) : (
-                <Text size="sm" c="dimmed">
-                  Gym
-                </Text>
-              )
-          },
-          { accessor: 'source', title: 'Where', render: (v) => VISIT_SOURCE_LABELS[v.source] },
-          {
-            accessor: 'actions',
-            title: '',
-            textAlign: 'right',
-            width: 60,
-            render: (v) => (
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                aria-label="Remove check-in"
-                onClick={() =>
-                  modals.openConfirmModal({
-                    title: 'Remove this check-in?',
-                    children: (
-                      <Text size="sm">
-                        {v.memberName} at {dayjs(v.checkedInAt).format('h:mm A')}. Use this for a wrong tap at the
-                        door.{v.trainerName && ' The personal training session is given back.'}
-                      </Text>
-                    ),
-                    labels: { confirm: 'Remove', cancel: 'Cancel' },
-                    confirmProps: { color: 'red' },
-                    onConfirm: () => remove.mutate([v.id])
-                  })
-                }
-              >
-                <IconTrash size={16} />
-              </ActionIcon>
-            )
-          }
-        ]}
-      />
+      <VisitsTable records={data} fetching={isPending} />
     </>
   )
 }

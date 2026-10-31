@@ -2,7 +2,7 @@ import { ActionIcon, Badge, Button, Group, Menu, Modal, NumberInput, SegmentedCo
 import { DatePickerInput } from '@mantine/dates'
 import { schemaResolver, useForm } from '@mantine/form'
 import { modals } from '@mantine/modals'
-import { IconCash, IconDots, IconPencil, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconCalendarEvent, IconCash, IconDots, IconPencil, IconRefresh, IconTrash } from '@tabler/icons-react'
 import { useEffect, useRef, useState } from 'react'
 import type { PtRegistration } from '@shared/api'
 import { addDays, computeEndDate, todayIso } from '@shared/dates'
@@ -19,6 +19,7 @@ import { api, useAction } from '../lib/api'
 import { formatDate, lkr } from '../lib/format'
 import { usePtPackages, useTrainers } from '../lib/queries'
 import { useMemberOptions } from './MemberSearch'
+import { PtDaysModal } from './ptDays'
 import { useReceipt } from './ReceiptDialog'
 
 export type PtState = 'ACTIVE' | 'NOT_STARTED' | 'USED_UP' | 'EXPIRED'
@@ -334,9 +335,9 @@ export function PtPaymentModal({ pt, onClose }: { pt: PtRegistration | null; onC
   )
 }
 
-/** Add payment, Renew, Edit and Delete for one package, each with its own dialog. */
+/** Session days, Add payment, Renew, Edit and Delete for one package, each with its own dialog. */
 export function PtActions({ pt }: { pt: PtRegistration }) {
-  const [open, setOpen] = useState<'pay' | 'edit' | 'renew' | null>(null)
+  const [open, setOpen] = useState<'days' | 'pay' | 'edit' | 'renew' | null>(null)
   const remove = useAction((id: string) => api.personalTraining.delete(id), { success: 'Package deleted' })
   const close = () => setOpen(null)
   return (
@@ -348,6 +349,13 @@ export function PtActions({ pt }: { pt: PtRegistration }) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconCalendarEvent size={16} />}
+            disabled={pt.left === 0 || pt.endDate < todayIso()}
+            onClick={() => setOpen('days')}
+          >
+            Session days
+          </Menu.Item>
           <Menu.Item leftSection={<IconCash size={16} />} disabled={pt.balance === 0} onClick={() => setOpen('pay')}>
             Add payment
           </Menu.Item>
@@ -380,6 +388,7 @@ export function PtActions({ pt }: { pt: PtRegistration }) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      <PtDaysModal pt={open === 'days' ? pt : null} onClose={close} />
       <PtPaymentModal pt={open === 'pay' ? pt : null} onClose={close} />
       <Modal opened={open === 'edit'} onClose={close} title="Edit package">
         {open === 'edit' && <PtEditForm pt={pt} onClose={close} />}

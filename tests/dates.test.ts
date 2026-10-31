@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, computeEndDate, monthRange, shiftMonth } from '../src/shared/dates'
+import { addDays, computeEndDate, monthGrid, monthRange, shiftMonth, weeklyDates } from '../src/shared/dates'
 
 describe('computeEndDate', () => {
   it('ends the day before: a 1-day pass ends the day it starts', () => {
@@ -58,5 +58,35 @@ describe('helpers', () => {
     expect(shiftMonth('2026-10', -11)).toBe('2025-11')
     expect(shiftMonth('2026-12', 1)).toBe('2027-01')
     expect(shiftMonth('2026-05', 0)).toBe('2026-05')
+  })
+})
+
+describe('monthGrid', () => {
+  it('covers whole weeks, Monday to Sunday', () => {
+    const days = monthGrid('2026-11')
+    expect(days[0]).toBe('2026-10-26')
+    expect(days[days.length - 1]).toBe('2026-12-06')
+    expect(days).toHaveLength(42)
+  })
+
+  it('adds nothing when the month starts on a Monday and ends on a Sunday', () => {
+    const days = monthGrid('2027-02')
+    expect(days[0]).toBe('2027-02-01')
+    expect(days[days.length - 1]).toBe('2027-02-28')
+    expect(days).toHaveLength(28)
+  })
+})
+
+describe('weeklyDates', () => {
+  it('finds the chosen days of the week between two dates', () => {
+    expect(weeklyDates('2026-11-02', '2026-11-12', [2, 4])).toEqual(['2026-11-03', '2026-11-05', '2026-11-10', '2026-11-12'])
+  })
+
+  it('includes both ends, and crosses months', () => {
+    expect(weeklyDates('2026-11-30', '2026-12-07', [1])).toEqual(['2026-11-30', '2026-12-07'])
+  })
+
+  it('finds nothing with no days chosen', () => {
+    expect(weeklyDates('2026-11-02', '2026-11-12', [])).toEqual([])
   })
 })

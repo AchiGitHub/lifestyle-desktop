@@ -2,6 +2,7 @@ import { AppShell, Badge, Box, Button, Group, Image, NavLink, ScrollArea, Stack,
 import {
   IconBarbell,
   IconCalendarDue,
+  IconCalendarMonth,
   IconCash,
   IconCloudCheck,
   IconCloudOff,
@@ -34,6 +35,7 @@ import { UpdateButton } from './Updates'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard },
+  { to: '/calendar', label: 'Calendar', icon: IconCalendarMonth },
   { to: '/check-ins', label: 'Check-ins', icon: IconDoorEnter },
   { to: '/members', label: 'Members', icon: IconUsers },
   { to: '/registrations', label: 'Registrations', icon: IconId },

@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { eq, sql, type SQL } from 'drizzle-orm'
+import { and, eq, gt, gte, lt, or, sql, type SQL } from 'drizzle-orm'
 import type {
   CheckInOption,
   NewPtRegistration,
+  PtDay,
+  PtDayClash,
   PtPackage,
   PtRegistration,
   PtSession,
@@ -15,19 +17,28 @@ import {
   dateRangeInput,
   monthInput,
   ptCreateInput,
+  ptDayAddInput,
+  ptDayClashInput,
+  ptDayInput,
+  ptDaysInput,
   ptPackageInput,
   ptPaymentInput,
   ptUpdateInput,
   trainerInput,
   type DateRangeInput,
   type PtCreateInput,
+  type PtDayAddInput,
+  type PtDayClashInput,
+  type PtDayInput,
+  type PtDaysInput,
   type PtPackageInput,
   type PtPaymentInput,
   type PtUpdateInput,
   type TrainerInput
 } from '../../shared/schemas'
 import type { Db } from '../db/client'
-import { members, payments, ptPackages, ptRegistrations, trainers } from '../db/schema'
+import { members, payments, ptDays, ptPackages, ptRegistrations, trainers } from '../db/schema'
+import { listClassSessions } from './classes'
 import { AppError, nowUtc, plural } from './errors'
 import { nextReceiptNo } from './payments'
 import { registrationsForMember } from './registrations'
@@ -139,6 +150,9 @@ export function loadPtRegistrations(db: Db, where?: SQL): PtRegistration[] {
         p.start_date as startDate, p.end_date as endDate, p.amount, p.commission,
         (select count(*) from visits v where v.pt_registration_id = p.id) as used,
         (select max(v.checked_in_at) from visits v where v.pt_registration_id = p.id) as lastSessionAt,
+        (select min(d.date) from pt_days d where d.pt_registration_id = p.id and d.date >= ${todayIso()}
+          and not exists(select 1 from visits v where v.pt_registration_id = p.id
+            and substr(v.checked_in_at, 1, 10) = d.date)) as nextDay,
         coalesce((select sum(pay.amount) from payments pay where pay.pt_registration_id = p.id), 0) as paid
       from pt_registrations p
       join members m on m.id = p.member_id
@@ -235,10 +249,22 @@ export function updatePtRegistration(db: Db, id: string, raw: PtUpdateInput): vo
   if (input.sessions < pt.used) {
     throw new AppError(`They've already had ${plural(pt.used, 'session')}, so it can't be fewer than that.`)
   }
-  db.update(ptRegistrations)
-    .set({ ...input, commission: trainer.isOwner ? 0 : input.commission, updatedAt: nowUtc() })
-    .where(eq(ptRegistrations.id, id))
-    .run()
+  db.transaction((tx) => {
+    tx.update(ptRegistrations)
+      .set({ ...input, commission: trainer.isOwner ? 0 : input.commission, updatedAt: nowUtc() })
+      .where(eq(ptRegistrations.id, id))
+      .run()
+    // Days planned outside its new dates can't be used. Past ones stay as a record.
+    tx.delete(ptDays)
+      .where(
+        and(
+          eq(ptDays.ptRegistrationId, id),
+          gte(ptDays.date, todayIso()),
+          or(lt(ptDays.date, input.startDate), gt(ptDays.date, input.endDate))
+        )
+      )
+      .run()
+  })
 }
 
 /** Only for a package entered by mistake: nothing paid and no sessions had. */
@@ -291,6 +317,151 @@ export function usablePt(db: Db, memberId: string, today: string): CheckInOption
 /** A balance on a package that's still running, as counts for "owes money" at check-in. */
 export function owesForPt(db: Db, memberId: string, today: string): boolean {
   return loadPtRegistrations(db, sql`p.member_id = ${memberId} and p.end_date >= ${today}`).some((p) => p.balance > 0)
+}
+
+// ------------------------------------------------------------- planned days
+
+/** Planned days matching `where` (an SQL condition on aliases `d` and `p`), earliest first. */
+function loadPtDays(db: Db, where: SQL): PtDay[] {
+  return db
+    .all<Omit<PtDay, 'came'> & { came: number }>(sql`
+      select d.id, d.pt_registration_id as ptRegistrationId, p.member_id as memberId,
+        trim(m.first_name || ' ' || m.last_name) as memberName, p.trainer_id as trainerId, t.name as trainerName,
+        p.package_name as packageName, d.date, d.start_time as startTime, d.minutes,
+        exists(select 1 from visits v where v.pt_registration_id = p.id and substr(v.checked_in_at, 1, 10) = d.date) as came
+      from pt_days d
+      join pt_registrations p on p.id = d.pt_registration_id
+      join members m on m.id = p.member_id
+      join trainers t on t.id = p.trainer_id
+      where ${where}
+      order by d.date, d.start_time`)
+    .map((d) => ({ ...d, came: Boolean(d.came) }))
+}
+
+/**
+ * Planned days between two dates. Days still to come drop off once the package
+ * has no sessions left, and come back if a check-in is removed.
+ */
+export function listPtDays(db: Db, raw: DateRangeInput): PtDay[] {
+  const { from, to } = dateRangeInput.parse(raw)
+  return loadPtDays(
+    db,
+    sql`d.date between ${from} and ${to} and (d.date <= ${todayIso()}
+      or (select count(*) from visits v where v.pt_registration_id = p.id) < p.sessions)`
+  )
+}
+
+export function upcomingPtDays(db: Db, id: string): PtDay[] {
+  return loadPtDays(db, sql`d.pt_registration_id = ${id} and d.date >= ${todayIso()}`)
+}
+
+/** A session can only be had from the day the package starts to its use-by date. */
+function checkPtDate(pt: PtRegistration, date: string): void {
+  const today = todayIso()
+  const first = pt.startDate > today ? pt.startDate : today
+  if (date < first || date > pt.endDate) {
+    throw new AppError('Choose a day from today on, within the package’s start and use-by dates.')
+  }
+}
+
+function checkFreeSession(pt: PtRegistration, planned: number): void {
+  if (planned >= pt.left) {
+    throw new AppError(`This package has ${plural(pt.left, 'session')} left, and each already has a day. Remove one first.`)
+  }
+}
+
+function checkDateFree(db: Db, id: string, date: string, except?: string): void {
+  const taken = db
+    .select({ id: ptDays.id })
+    .from(ptDays)
+    .where(and(eq(ptDays.ptRegistrationId, id), eq(ptDays.date, date)))
+    .get()
+  if (taken && taken.id !== except) throw new AppError('This package already has a session on that day.')
+}
+
+/** Replaces the days still to come. Today stays if they've already had that session. */
+export function setPtDays(db: Db, id: string, raw: PtDaysInput): void {
+  const days = ptDaysInput.parse(raw)
+  const pt = getPtRegistration(db, id)
+  for (const day of days) checkPtDate(pt, day.date)
+  if (days.length > pt.left) {
+    throw new AppError(`This package has ${plural(pt.left, 'session')} left, so it can only have that many days.`)
+  }
+  const upcoming = upcomingPtDays(db, id)
+  if (upcoming.some((d) => d.came && days.some((day) => day.date === d.date))) {
+    throw new AppError('They’ve already had that day’s session.')
+  }
+  db.transaction((tx) => {
+    for (const day of upcoming) if (!day.came) tx.delete(ptDays).where(eq(ptDays.id, day.id)).run()
+    if (days.length > 0) {
+      tx.insert(ptDays)
+        .values(days.map((day) => ({ id: randomUUID(), ptRegistrationId: id, ...day })))
+        .run()
+    }
+  })
+}
+
+export function addPtDay(db: Db, raw: PtDayAddInput): void {
+  const { ptRegistrationId, ...day } = ptDayAddInput.parse(raw)
+  const pt = getPtRegistration(db, ptRegistrationId)
+  checkPtDate(pt, day.date)
+  checkDateFree(db, pt.id, day.date)
+  checkFreeSession(pt, upcomingPtDays(db, pt.id).filter((d) => !d.came).length)
+  db.insert(ptDays)
+    .values({ id: randomUUID(), ptRegistrationId, ...day })
+    .run()
+}
+
+export function updatePtDay(db: Db, id: string, raw: PtDayInput): void {
+  const input = ptDayInput.parse(raw)
+  const [day] = loadPtDays(db, sql`d.id = ${id}`)
+  if (!day) throw new AppError('That day no longer exists.')
+  if (day.came) throw new AppError('They came for this session, so it can’t be changed.')
+  const pt = getPtRegistration(db, day.ptRegistrationId)
+  checkPtDate(pt, input.date)
+  checkDateFree(db, pt.id, input.date, id)
+  checkFreeSession(pt, upcomingPtDays(db, pt.id).filter((d) => !d.came && d.id !== id).length)
+  db.update(ptDays)
+    .set({ ...input, updatedAt: nowUtc() })
+    .where(eq(ptDays.id, id))
+    .run()
+}
+
+export function deletePtDay(db: Db, id: string): void {
+  db.delete(ptDays).where(eq(ptDays.id, id)).run()
+}
+
+const clockMinutes = (time: string): number => {
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function overlaps(a: { startTime: string; minutes: number }, b: { startTime: string; minutes: number }): boolean {
+  const aStart = clockMinutes(a.startTime)
+  const bStart = clockMinutes(b.startTime)
+  return aStart < bStart + b.minutes && bStart < aStart + a.minutes
+}
+
+/** Classes and other clients the package's trainer has at these times. */
+export function ptDayClashes(db: Db, raw: PtDayClashInput): PtDayClash[] {
+  const { ptRegistrationId, days } = ptDayClashInput.parse(raw)
+  if (days.length === 0) return []
+  const pt = getPtRegistration(db, ptRegistrationId)
+  const dates = days.map((d) => d.date).sort()
+  const range = { from: dates[0], to: dates[dates.length - 1] }
+  const busy = [
+    ...listClassSessions(db, range)
+      .filter((c) => c.trainerId === pt.trainerId && !c.cancelled)
+      .map((c) => ({ ...c, name: c.className })),
+    ...listPtDays(db, range)
+      .filter((d) => d.trainerId === pt.trainerId && d.ptRegistrationId !== pt.id)
+      .map((d) => ({ ...d, name: d.memberName }))
+  ]
+  return days.flatMap((day) =>
+    busy
+      .filter((b) => b.date === day.date && overlaps(day, b))
+      .map((b) => ({ date: day.date, name: b.name, startTime: b.startTime }))
+  )
 }
 
 /** Sessions had in a date range, newest first, numbered within their package. */

@@ -66,6 +66,13 @@ body {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
+/* The default window: all of the menu fits without scrolling. */
+@media (max-height: 860px) {
+  .nav-link {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
 /* Short screens (1366×768 at 125% scaling): the menu matters more than the logo. */
 @media (max-height: 640px) {
   .nav-logo,
@@ -76,6 +83,73 @@ body {
     padding-top: 5px;
     padding-bottom: 5px;
   }
+}
+
+/* The calendar: lines between cells are the grid's background showing through the 1px gaps. */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(84px, auto);
+  gap: 1px;
+  background: var(--mantine-color-default-border);
+}
+.calendar-weekday {
+  padding: 6px 8px;
+  background: var(--app-muted-bg);
+}
+.calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px;
+  background: var(--mantine-color-body);
+}
+.calendar-day:hover {
+  background: var(--app-muted-bg);
+}
+.calendar-day:focus-visible {
+  outline: 2px solid var(--mantine-color-brand-4);
+  outline-offset: -2px;
+}
+.calendar-day[data-outside] {
+  background: var(--app-muted-bg);
+}
+.calendar-day[data-outside] > * {
+  opacity: 0.6;
+}
+.calendar-date {
+  align-self: flex-start;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+.calendar-day[data-today] .calendar-date {
+  background: var(--mantine-color-flame-6);
+  color: #fff;
+}
+.calendar-class,
+.calendar-line {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-class {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.calendar-class[data-cancelled] {
+  opacity: 0.6;
+  text-decoration: line-through;
 }
 
 .nav-link[data-active]::before {

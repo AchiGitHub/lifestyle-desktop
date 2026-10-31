@@ -121,6 +121,11 @@ function Clients() {
                 <Text size="xs" c="dimmed" style={nowrap}>
                   {p.lastSessionAt ? `Last ${formatDate(p.lastSessionAt)}` : 'None yet'}
                 </Text>
+                {p.nextDay && p.left > 0 && (
+                  <Text size="xs" c="dimmed" style={nowrap}>
+                    Next {formatDate(p.nextDay)}
+                  </Text>
+                )}
               </div>
             )
           },

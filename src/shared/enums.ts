@@ -75,6 +75,22 @@ export function incomeGroup(category: PaymentCategory): 'memberships' | 'persona
   return 'store'
 }
 
+/** Theme colours a class can have on the calendar. Pink is left out: it means personal training. */
+export const CLASS_COLORS = ['brand', 'flame', 'grape', 'teal', 'cyan', 'lime', 'yellow'] as const
+export type ClassColor = (typeof CLASS_COLORS)[number]
+
+/** Date.getDay() numbers, in the order the app shows them: weeks start on Monday. */
+export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const
+export const WEEKDAY_LABELS: Record<number, string> = {
+  0: 'Sun',
+  1: 'Mon',
+  2: 'Tue',
+  3: 'Wed',
+  4: 'Thu',
+  5: 'Fri',
+  6: 'Sat'
+}
+
 export const VISIT_SOURCES = ['DOOR', 'DESK'] as const
 export type VisitSource = (typeof VISIT_SOURCES)[number]
 export const VISIT_SOURCE_LABELS: Record<VisitSource, string> = { DOOR: 'Door tablet', DESK: 'Front desk' }

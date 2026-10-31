@@ -114,6 +114,11 @@ export function expiringRegistrations(db: Db, range: { from: string; to: string 
   return loadRegistrations(db, sql`r.end_date between ${range.from} and ${range.to}`)
 }
 
+/** Registrations starting inside the range. */
+export function startingRegistrations(db: Db, range: { from: string; to: string }): Registration[] {
+  return loadRegistrations(db, sql`r.start_date between ${range.from} and ${range.to}`)
+}
+
 /**
  * Lapsed memberships: registrations that have ended and are still the latest
  * registration for at least one of their members (so nobody renewed them).

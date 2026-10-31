@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  CLASS_COLORS,
   DURATION_TYPES,
   GENDERS,
   PAYMENT_CATEGORIES,
@@ -186,6 +187,46 @@ export const trainerInput = z.object({
 })
 export type TrainerInput = z.input<typeof trainerInput>
 
+/** Local time 'HH:mm'. */
+const clockTime = z.string({ error: 'Pick a time' }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Pick a time')
+
+const classMinutes = z
+  .number({ error: 'Enter the length' })
+  .int('Whole minutes only')
+  .min(5, 'At least 5 minutes')
+  .max(480, 'At most 8 hours')
+
+/** Zumba, HIIT and so on. */
+export const classTypeInput = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  color: z.enum(CLASS_COLORS, { error: 'Choose a colour' }),
+  minutes: classMinutes
+})
+export type ClassTypeInput = z.input<typeof classTypeInput>
+
+const classTerms = {
+  classTypeId: id('Choose a class'),
+  startTime: clockTime,
+  minutes: classMinutes,
+  /** The instructor, from the trainers in Settings. */
+  trainerId: z.preprocess(emptyToNull, z.string().nullable())
+}
+
+/** A class on one date. */
+export const classSessionInput = z.object({ ...classTerms, date: isoDate })
+export type ClassSessionInput = z.input<typeof classSessionInput>
+
+/** A class every week on the chosen days. */
+export const classSeriesInput = z
+  .object({
+    ...classTerms,
+    weekdays: z.array(z.number().int().min(0).max(6)).min(1, 'Choose at least one day'),
+    startsOn: isoDate,
+    endsOn: z.preprocess(emptyToNull, isoDate.nullable())
+  })
+  .refine((v) => !v.endsOn || v.endsOn >= v.startsOn, { message: 'Must be on or after the first day', path: ['endsOn'] })
+export type ClassSeriesInput = z.input<typeof classSeriesInput>
+
 const ptSessions = z
   .number({ error: 'Enter the number of sessions' })
   .int('Whole numbers only')
@@ -201,6 +242,22 @@ export const ptPackageInput = z.object({
   validDurationType: durationInput.shape.durationType
 })
 export type PtPackageInput = z.input<typeof ptPackageInput>
+
+/** One planned personal training day. */
+export const ptDayInput = z.object({ date: isoDate, startTime: clockTime, minutes: classMinutes })
+export type PtDayInput = z.input<typeof ptDayInput>
+
+/** A package's days from today on, replacing the ones set before. */
+export const ptDaysInput = z.array(ptDayInput).refine((days) => new Set(days.map((d) => d.date)).size === days.length, {
+  message: 'Each day can only be chosen once'
+})
+export type PtDaysInput = z.input<typeof ptDaysInput>
+
+export const ptDayAddInput = ptDayInput.extend({ ptRegistrationId: id('Choose a package') })
+export type PtDayAddInput = z.input<typeof ptDayAddInput>
+
+export const ptDayClashInput = z.object({ ptRegistrationId: id('Choose a package'), days: z.array(ptDayInput) })
+export type PtDayClashInput = z.input<typeof ptDayClashInput>
 
 const ptTerms = {
   trainerId: id('Choose a trainer'),

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { putSetting, readSettings } from '../services/settings'
 import type { Executor } from './client'
-import { durations, membershipTypes, registrationMembers, registrations } from './schema'
+import { classTypes, durations, membershipTypes, registrationMembers, registrations } from './schema'
 
 /**
  * The old app charged the joining fee through copies of plans "with Reg.".
@@ -26,6 +26,7 @@ export const JOINING_FEE_PLANS: Array<{ plan: string; becomes: string; createWit
 ]
 
 const JOINING_FEE_FLAG = 'upgrade.joiningFeePlans'
+const CLASS_TYPES_FLAG = 'upgrade.classTypes'
 const norm = (name: string): string => name.toLowerCase().replace(/\s+/g, ' ').trim()
 
 export interface JoiningFeeConversion {
@@ -108,10 +109,26 @@ export function convertJoiningFeePlans(db: Executor): JoiningFeeConversion {
   return result
 }
 
+/** The classes the gym starts with. Once only, so deleting one doesn't bring it back. */
+function seedClassTypes(db: Executor): void {
+  db.insert(classTypes)
+    .values([
+      { id: randomUUID(), name: 'Zumba', color: 'grape', minutes: 60 },
+      { id: randomUUID(), name: 'HIIT', color: 'flame', minutes: 45 }
+    ])
+    .run()
+}
+
 /** Runs the one-time upgrades this database hasn't had yet. */
 export function upgradeData(db: Executor): void {
-  if (readSettings(db, [JOINING_FEE_FLAG]).has(JOINING_FEE_FLAG)) return
-  const result = convertJoiningFeePlans(db)
-  putSetting(db, JOINING_FEE_FLAG, new Date().toISOString())
-  if (result.registrations > 0 || result.skipped.length > 0) console.log('Joining fee plans converted:', result)
+  const done = readSettings(db, [JOINING_FEE_FLAG, CLASS_TYPES_FLAG])
+  if (!done.has(JOINING_FEE_FLAG)) {
+    const result = convertJoiningFeePlans(db)
+    putSetting(db, JOINING_FEE_FLAG, new Date().toISOString())
+    if (result.registrations > 0 || result.skipped.length > 0) console.log('Joining fee plans converted:', result)
+  }
+  if (!done.has(CLASS_TYPES_FLAG)) {
+    seedClassTypes(db)
+    putSetting(db, CLASS_TYPES_FLAG, new Date().toISOString())
+  }
 }

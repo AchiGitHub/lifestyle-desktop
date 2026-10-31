@@ -26,6 +26,17 @@ export function formatDateTime(iso: string | null | undefined): string {
   return iso ? dayjs(iso).format('D MMM YYYY, h:mm A') : 'No date'
 }
 
+/** '18:30' as 6:30 PM. */
+export function formatClock(time: string): string {
+  return dayjs(`2000-01-01T${time}`).format('h:mm A')
+}
+
+/** A class's times: 6:00 PM – 7:00 PM. */
+export function classTimes(c: { startTime: string; minutes: number }): string {
+  const start = dayjs(`2000-01-01T${c.startTime}`)
+  return `${start.format('h:mm A')} – ${start.add(c.minutes, 'minute').format('h:mm A')}`
+}
+
 export function fromNow(isoInstant: string): string {
   return dayjs(isoInstant).fromNow()
 }

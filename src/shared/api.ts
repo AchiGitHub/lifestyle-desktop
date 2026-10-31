@@ -1,4 +1,5 @@
 import type {
+  ClassColor,
   DurationType,
   Gender,
   PaymentCategory,
@@ -11,6 +12,9 @@ import type {
   VisitStatus
 } from './enums'
 import type {
+  ClassSeriesInput,
+  ClassSessionInput,
+  ClassTypeInput,
   CreditPaymentInput,
   DateRangeInput,
   DurationInput,
@@ -22,6 +26,10 @@ import type {
   ProductEditInput,
   ProductInput,
   PtCreateInput,
+  PtDayAddInput,
+  PtDayClashInput,
+  PtDayInput,
+  PtDaysInput,
   PtPackageInput,
   PtPaymentInput,
   PtUpdateInput,
@@ -285,6 +293,78 @@ export interface Trainer {
   packageCount: number
 }
 
+/** Zumba, HIIT and so on. */
+export interface ClassType {
+  id: string
+  name: string
+  color: ClassColor
+  /** Fills in the length of a new class. */
+  minutes: number
+  archived: boolean
+  /** Weekly classes and dates that use it; one in use can only be archived. */
+  used: number
+}
+
+/** A class that runs every week. */
+export interface ClassSeries {
+  id: string
+  classTypeId: string
+  className: string
+  color: ClassColor
+  /** Date.getDay() numbers. */
+  weekdays: number[]
+  /** Local time 'HH:mm'. */
+  startTime: string
+  minutes: number
+  trainerId: string | null
+  trainerName: string | null
+  startsOn: string
+  /** The last day it runs; null while it keeps going. */
+  endsOn: string | null
+}
+
+/** One class on one date. */
+export interface ClassSession {
+  id: string
+  classTypeId: string
+  className: string
+  color: ClassColor
+  /** Null for a one-off. */
+  seriesId: string | null
+  date: string
+  /** Local time 'HH:mm'. */
+  startTime: string
+  minutes: number
+  trainerId: string | null
+  trainerName: string | null
+  cancelled: boolean
+}
+
+/** What's on one day of the calendar. */
+export interface CalendarDay {
+  date: string
+  classes: ClassSession[]
+  ptDays: PtDay[]
+  takings: number
+  checkIns: number
+  /** By start date, as on the dashboard. */
+  newSignUps: number
+  renewals: number
+  /** Memberships ending this day that aren't renewed or dismissed, as on Renewals due. */
+  due: number
+  /** Personal training packages ending this day with sessions left. */
+  ptEnding: number
+  birthdays: number
+}
+
+export interface Birthday {
+  id: string
+  name: string
+  mobileNumber: string | null
+  /** The age reached on the date asked about. */
+  turns: number
+}
+
 /** A personal training session type. */
 export interface PtPackage {
   id: string
@@ -323,9 +403,36 @@ export interface PtRegistration {
   balance: number
   /** Local 'YYYY-MM-DDTHH:mm:ss'. */
   lastSessionAt: string | null
+  /** The next planned day, today or later. */
+  nextDay: string | null
 }
 
 export type NewPtRegistration = PtRegistration & { paymentId: string | null }
+
+/** A day a package's session is planned for. */
+export interface PtDay {
+  id: string
+  ptRegistrationId: string
+  memberId: string
+  memberName: string
+  trainerId: string
+  trainerName: string
+  packageName: string
+  date: string
+  /** Local time 'HH:mm'. */
+  startTime: string
+  minutes: number
+  /** They checked in for a session on this package that day. */
+  came: boolean
+}
+
+/** Something else the trainer has at the same time. */
+export interface PtDayClash {
+  date: string
+  name: string
+  /** Local time 'HH:mm'. */
+  startTime: string
+}
 
 /** A personal training session: a check-in against a package. */
 export interface PtSession {
@@ -640,6 +747,7 @@ export interface Api {
     delete(ids: string[]): Promise<void>
     expiring(range: DateRangeInput): Promise<Registration[]>
     expired(): Promise<Registration[]>
+    starting(range: DateRangeInput): Promise<Registration[]>
   }
   payments: {
     list(filter: PaymentFilterInput): Promise<Payment[]>
@@ -668,6 +776,33 @@ export interface Api {
     setArchived(id: string, archived: boolean): Promise<void>
     delete(id: string): Promise<void>
   }
+  /** What can go on the calendar. */
+  classTypes: {
+    list(): Promise<ClassType[]>
+    create(input: ClassTypeInput): Promise<void>
+    update(id: string, input: ClassTypeInput): Promise<void>
+    setArchived(id: string, archived: boolean): Promise<void>
+    delete(id: string): Promise<void>
+  }
+  /** Classes that run every week. */
+  classSeries: {
+    list(): Promise<ClassSeries[]>
+    create(input: ClassSeriesInput): Promise<void>
+    update(id: string, input: ClassSeriesInput): Promise<void>
+    delete(id: string): Promise<void>
+  }
+  /** Classes on one date: one-offs, and single dates of a weekly class. */
+  classSessions: {
+    create(input: ClassSessionInput): Promise<void>
+    update(id: string, input: ClassSessionInput): Promise<void>
+    setCancelled(id: string, cancelled: boolean): Promise<void>
+    delete(id: string): Promise<void>
+  }
+  calendar: {
+    /** Every day in the range, oldest first. */
+    days(range: DateRangeInput): Promise<CalendarDay[]>
+    birthdays(date: string): Promise<Birthday[]>
+  }
   /** Personal training session types. */
   ptPackages: {
     list(): Promise<PtPackage[]>
@@ -688,6 +823,15 @@ export interface Api {
     sessions(range: DateRangeInput): Promise<PtSession[]>
     /** A 'YYYY-MM' month: packages sold per trainer and their commission. */
     commission(month: string): Promise<TrainerCommission[]>
+    /** A package's days from today on. */
+    days(id: string): Promise<PtDay[]>
+    /** Replaces a package's days from today on. */
+    setDays(id: string, days: PtDaysInput): Promise<void>
+    addDay(input: PtDayAddInput): Promise<void>
+    updateDay(id: string, input: PtDayInput): Promise<void>
+    deleteDay(id: string): Promise<void>
+    /** What else the package's trainer has at those times: a warning, not a rule. */
+    dayClashes(input: PtDayClashInput): Promise<PtDayClash[]>
   }
   /** Money still to pay, for memberships, personal training and store items. */
   owed: {
